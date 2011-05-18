@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,7 +31,11 @@ var fs = http.FileServer("static", "/")
 
 func init() {
 	info = loadInfo("a056287.5.28.gob")
+	runtime.GC()
+	runtime.GC()
 	xorInfo = loadInfo("xor.a056287.5.12.gob")
+	runtime.GC()
+	runtime.GC()
 
 	http.HandleFunc("/", main)
 	http.HandleFunc("/about", aboutHandler)
@@ -107,6 +112,7 @@ var Z = literal(4)
 type MainData struct {
 	Query string
 	Result []byte
+	Mem uint64
 }
 
 type ResultData struct {
@@ -149,7 +155,7 @@ func main(w http.ResponseWriter, req *http.Request) {
 	}()
 
 	q := req.FormValue("q")
-	data := &MainData{Query: q}
+	data := &MainData{Query: q, Mem: runtime.MemStats.Sys}
 	if q != "" {
 		data.Result = result(q)
 	}

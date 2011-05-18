@@ -5,7 +5,6 @@ package web
 
 import (
 	"bytes"
-	"compress/bzip2"
 	"gob"
 	"io"
 	"fmt"
@@ -232,11 +231,15 @@ func gobUnmarshal(name string, data interface{}) os.Error {
 	var f io.Reader
 	f, err = os.Open(name)
 	if err != nil {
-		f1, err := os.Open(name+".bz2")
+		f1, err := os.Open(name+".aa")
 		if err != nil {
 			return err
 		}
-		f = bzip2.NewReader(f1)
+		f2, err := os.Open(name+".ab")
+		if err != nil {
+			return err
+		}
+		f = io.MultiReader(f1, f2)
 	}
 	err = gob.NewDecoder(f).Decode(data)
 	if err != nil {

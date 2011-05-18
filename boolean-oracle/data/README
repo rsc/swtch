@@ -1,0 +1,19 @@
+This directory holds the text form of the precomputed tables.
+
+To interpret them you need to be able to find the canonical
+(minimum) truth table value for a given Boolean function.
+Then look up that function in the list.  The line will say something
+like:
+
+0x0000000f = 0x0f0f0f0f & 0x000000ff (size 2)
+
+That means that one optimal way to compute the function with
+canonical truth table 0x0000000f is to compute 0x0f0f0f0f and
+0x000000ff optimally and then AND them together.  The resulting
+Boolean expression will have size (number of operators) 2.
+
+The operands on the right side of the equals sign are not necessarily
+canonical.  You have to canonicalize on the way down during the 
+recursion and then apply the reverse transformation on the way back
+up to get the answer for the original formula.  See the code in app/web/
+for an example.

@@ -1,0 +1,19 @@
+This is the code for the Boolean Oracle.
+
+app/
+	source for the App Engine app
+
+compute/
+	source for the table computation
+
+data/
+	computed data files
+
+
+http://research.swtch.com/2011/05/minimal-boolean-formulas.html
+http://boolean-oracle.swtch.com/
+http://oeis.org/A056287
+
+Russ Cox
+rsc@swtch.com
+May 18, 2011

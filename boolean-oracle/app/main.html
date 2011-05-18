@@ -1,0 +1,194 @@
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>Boolean Oracle</title>
+<style type="text/css"><!--
+body {
+	background-color: white;
+	color: black;
+	font-family: serif;
+	font-size: medium;
+	line-height: 1.2em;
+	margin-left: 0.5in;
+	margin-right: 0.5in;
+	margin-top: 0.5in;
+	margin-bottom: 0;
+}
+
+p.lp {
+	text-indent: 0in;
+	text-align: justify;
+}
+
+p.lp-left {
+	text-indent: 0in;
+	text-align: left;
+}
+
+p.tlp {
+	text-indent: 0in;
+	text-align: justify;
+	margin-top: 0.25in;
+}
+
+p.pp {
+	text-indent: 0.35in;
+	text-align: justify;
+}
+
+code {
+	font-family: monospace;
+	font-size: medium;
+}
+
+h2.sh {
+	text-indent: 0in;
+	text-align: left;
+	margin-top: 2em;
+	margin-bottom: 0.05in;
+	font-weight: bold;
+	font-size: medium
+}
+
+p.fig {
+	text-align: center;
+}
+
+div.fig {
+	text-align: center;
+	margin-left: -0.5in;
+	margin-right: -0.5in;
+}
+
+.box {
+	border-style: dashed;
+	border-width: 1px;
+}
+
+pre.p1 {
+	text-indent: 0in;
+	text-align: left;
+	line-height: 1.1em;
+	font-size: 0.9em;
+	margin-left: 0.5in;
+	margin-right: 0.5in;
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+h1.tl {
+	font-weight: bold;
+	font-size: medium;
+	text-align: center;
+	margin-top: 3em;
+}
+
+h2.au {
+	font-weight: normal;
+	font-size: medium;
+	text-align: center;
+	margin-top: 1.5em;
+	margin-bottom: 3em;
+}
+
+p.copy {
+	text-align: center;
+	text-indent: 0in;
+	margin-top: 3em;
+	margin-bottom: 3em;
+	font-size: small;
+}
+
+--></style>
+<script>
+function $(id) {
+	return document.getElementById(id);
+}
+function text(e) {
+	if (e == null) {
+		return "";
+	}
+	var s = e.value;
+	return s;
+}
+ 
+var lastQ = null
+var ticking = false
+var ticksSinceChange = 0
+ 
+function runQuery() {
+	var q = text($("the_query"))
+	if(q == lastQ) {
+		return
+	}
+	lastQ = q
+	ticksSinceChange = 0
+	if(!ticking) {
+		setTimeout(function(){runQueryTick()}, 200)
+		ticking = true
+	}
+}
+ 
+function runQueryTick(v) {
+	ticksSinceChange++
+	if(ticksSinceChange < 1) {
+		setTimeout(function(){runQueryTick()}, 200)
+		return
+	}
+	
+	var req = new XMLHttpRequest()
+	req.onreadystatechange = function() { runQueryTick2(req) }
+	req.open("GET", "/result?q=" + encodeURIComponent(lastQ), true)
+	req.send(null)
+}
+ 
+function runQueryTick2(req) {
+	if(req.readyState == 4 && req.status == 200) {
+		$("output").innerHTML = req.responseText
+	}
+	ticking = false
+}
+</script>
+  </head>
+  <body>
+    <div style="width: 400px; float: right;">
+    
+    <b>Interesting Functions</b><br><br>
+    <b><i>Hardest n-input for (AND, OR, XOR)</i></b><br>
+    (1) <a href="/?q=(1)">1</a><br>
+    (2) <a href="/?q=x%2by+=+1">x+y = 1</a><br>
+    (3) <a href="/?q=x%2by%2bz+=+1">x+y+z = 1</a><br>
+    (4) <a href="/?q=x%2by%2bz%2bw+=+1">x+y+z+w = 1</a><br>
+    (5) <a href="/?q=x%2by%2bz%2bw%2bv+in+0,3">x+y+z+w+v in 0,3</a><br>
+    <br>
+    <b><i>Hardest n-input for (AND, OR)</i></b><br>
+    (1) <a href="/?q=(1)">1</a><br>
+    (2) <a href="/?q=x^y">x^y</a><br>
+    (3) <a href="/?q=x^y^z">x^y^z</a><br>
+    (4) <a href="/?q=x^y^z^w">x^y^z^w</a><br>
+    (5) <a href="/?q=x%2by%2bz%2bw%2bv+in+0,1,3">x+y+z+w+v in 0,1,3</a>,<br>
+    &nbsp; &nbsp; <a href="/?q=x%2by%2bz%2bw%2bv+in+0,1,3+||+x%26y%26z%26w%26!v">x+y+z+w+v in 0,1,3 || x&y&z&w&!v</a>,<br>
+    &nbsp; &nbsp; <a href="/?q=x%2by%2bz%2bw%2bv+in+1,3+||+x%26y%26z%26w%26!v">x+y+z+w+v in 1,3 || x&amp;y&amp;z&amp;w&amp;!v</a>
+    </div>
+    
+    <div>
+    <h1>Boolean Oracle</h1>
+    
+    <p class=lp style="margin-right: 420px;">
+    This web server computes a minimal Boolean formula
+    for a given function, using the operator sets (AND, OR, XOR) and (AND, OR).
+    </p>
+    <form method="GET" action="./">
+      <input type="text" maxLength=512 name="q" id="the_query" title="Function" value="«Query|html»" size=80 onkeyup="runQuery()" onclick="runQuery()" onchange="runQuery()"><input type="submit" value="Submit">
+    </form>
+    <br><br>
+    <div id="output">
+    «Result»
+    </div>
+    </div>
+    <a href="/about">How does this work?</a>
+    <br><br>
+    <a href="http://blog.golang.org/2011/05/go-and-google-app-engine.html"><img src="/gopher.gif" alt="Powered by Go on Google App Engine"/><img src="http://code.google.com/appengine/images/appengine-noborder-120x30.gif" 
+alt="Powered by Go on Google App Engine" /></a>
+  </body>
+</html>

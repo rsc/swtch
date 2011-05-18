@@ -1,0 +1,166 @@
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>About the Boolean Oracle</title>
+<style type="text/css"><!--
+body {
+	background-color: white;
+	color: black;
+	font-family: serif;
+	font-size: medium;
+	line-height: 1.2em;
+	margin-left: 0.5in;
+	margin-right: 0.5in;
+	margin-top: 0.5in;
+	margin-bottom: 0;
+}
+
+p.lp {
+	text-indent: 0in;
+	text-align: justify;
+}
+
+p.lp-left {
+	text-indent: 0in;
+	text-align: left;
+}
+
+p.tlp {
+	text-indent: 0in;
+	text-align: justify;
+	margin-top: 0.25in;
+}
+
+p.pp {
+	text-indent: 0.35in;
+	text-align: justify;
+}
+
+code {
+	font-family: monospace;
+	font-size: medium;
+}
+
+h2.sh {
+	text-indent: 0in;
+	text-align: left;
+	margin-top: 2em;
+	margin-bottom: 0.05in;
+	font-weight: bold;
+	font-size: medium
+}
+
+p.fig {
+	text-align: center;
+}
+
+div.fig {
+	text-align: center;
+	margin-left: -0.5in;
+	margin-right: -0.5in;
+}
+
+.box {
+	border-style: dashed;
+	border-width: 1px;
+}
+
+pre.p1 {
+	text-indent: 0in;
+	text-align: left;
+	line-height: 1.1em;
+	font-size: 0.9em;
+	margin-left: 0.5in;
+	margin-right: 0.5in;
+	margin-top: 0;
+	margin-bottom: 0;
+}
+
+h1.tl {
+	font-weight: bold;
+	font-size: medium;
+	text-align: center;
+	margin-top: 3em;
+}
+
+h2.au {
+	font-weight: normal;
+	font-size: medium;
+	text-align: center;
+	margin-top: 1.5em;
+	margin-bottom: 3em;
+}
+
+p.copy {
+	text-align: center;
+	text-indent: 0in;
+	margin-top: 3em;
+	margin-bottom: 3em;
+	font-size: small;
+}
+
+--></style>
+  </head>
+  <body>
+  <h1>About the Boolean Oracle</h1>
+
+  <p class=lp>
+  This web server computes the minimal Boolean formula
+  for a given function using a &ldquo;cheat sheet&rdquo; generated during the search
+  for the most complex minimal Boolean formula over five variables.
+  The cheat sheet records how to generate each of the 616,126 
+  distinct five-input Boolean formulas (modulo negation and permutation
+  of the inputs and negation of the output).
+  Given a function, the web server searches for a transformation
+  that produces the equivalent canonical function
+  and then applies the reverse transformation to the
+  canonical function's subformulas.  
+  It must then recursively translate each of the subformulas,
+  until it hits simple variables.
+  <a href="XXX">This blog post</a> explains more about the precomputation.
+  </p>
+  
+  <p class=lp>
+  The problem of minimal Boolean formula complexity
+  is inspired by a related circuit design problem first
+  studied by Claude Shannon.  This form is the OEIS sequences
+  <a href="http://oeis.org/A056287">A056287</a> and <a href="http://oeis.org/A178939">A178939</a>
+  </p>
+  
+  <h2>Syntax</h2>
+  
+  <p class=lp>The syntax accepted by the web server is C expressions
+  over the variables <code>v</code>, <code>w</code>, <code>x</code>,
+  <code>y</code>, and <code>z</code> with the following exceptions:
+  </p>
+  
+  <ul>
+  <li>There is no assignment; <code>=</code> is shorthand for <code>==</code>.
+  <li>There is no comma operator.
+  <li>The new syntax <i>expr</i> <code>in</code> <i>list</i>, where
+      <i>list</i> is a comma-separated list of expressions, evaluates
+      to 1 if <i>expr</i> is equal to any of the expressions in <i>list</i>, 0 otherwise.
+      This makes it easy to describe symmetric functions: <code>x+y+z in 1,2</code>.
+  </ul>
+  
+  <p class=lp>The function is the result of evaluating the C expression
+  for each possible input setting.  The function is false when the C expression
+  evaluates to zero, true otherwise.  As a special case, a hexadecimal constant,
+  like <code>0xffff0000</code>, is interpreted as the truth table value itself:
+  each bit is a function output, as described in the blog post.</p>
+
+  <h2>Source code</h2>
+  
+  <p class=lp>The source code for the search and the web app, both written in <a href="http://golang.org/">Go</a>, are
+  available from the
+  <a href="http://code.google.com/p/boolean-oracle">boolean-oracle</a> 
+  project on Google Code.
+
+  <h2>Tables</h2>
+  
+  <p class=lp>The tables that power the web site are <a href="http://boolean-oracle.googlecode.com/hg/data/">available for download</a>.
+    <br><br>
+    <a href="http://blog.golang.org/2011/05/go-and-google-app-engine.html"><img src="/gopher.gif" alt="Powered by Go on Google App Engine"/><img src="http://code.google.com/appengine/images/appengine-noborder-120x30.gif" 
+alt="Powered by Go on Google App Engine" /></a>
+  </body>
+</html>

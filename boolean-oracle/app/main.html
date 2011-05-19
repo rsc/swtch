@@ -138,14 +138,16 @@ function runQueryTick(v) {
 	
 	_gaq.push(['_trackEvent', 'Formula', 'Lookup', lastQ])
 	var req = new XMLHttpRequest()
-	req.onreadystatechange = function() { runQueryTick2(req) }
+	req.onreadystatechange = function() { runQueryTick2(req, lastQ) }
 	req.open("GET", "/result?q=" + encodeURIComponent(lastQ), true)
 	req.send(null)
 }
  
-function runQueryTick2(req) {
+function runQueryTick2(req, q) {
 	if(req.readyState == 4 && req.status == 200) {
 		$("output").innerHTML = req.responseText
+		if(history && history.replaceState)
+			history.replaceState(null, null, "?q=" + q)
 	}
 	ticking = false
 }

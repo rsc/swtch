@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"http"
 	"io"
-	"log"
 	"os"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"template"
 )
 
@@ -30,18 +30,18 @@ var fatalErr os.Error
 var fs = http.FileServer("static", "/")
 
 func init() {
-	info = loadInfo("a056287.5.28.gob")
-	runtime.GC()
-	runtime.GC()
-	xorInfo = loadInfo("xor.a056287.5.12.gob")
-	runtime.GC()
-	runtime.GC()
-
 	http.HandleFunc("/", main)
 	http.HandleFunc("/about", aboutHandler)
 	http.HandleFunc("/result", resultHandler)
 	http.HandleFunc("/debug", debug)
 }
+
+func load() {
+	info = loadInfo("a056287.5.28.raw")
+	xorInfo = loadInfo("xor.a056287.5.12.raw")
+}
+
+var once sync.Once
 
 func debug(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")	
@@ -56,10 +56,7 @@ func (v byF) Less(i, j int) bool { return v[i].F < v[j].F }
 
 func loadInfo(name string) []Info {
 	var state Savepoint
-	if err := gobUnmarshal(name, &state); err != nil {
-		fatalErr = err
-		log.Fatal(err)
-	}
+	rawUnmarshal(name, &state)
 	info := make([]Info, len(state.Howto))
 	for i := range info {
 		info[i].Record = state.Howto[i]
@@ -176,6 +173,7 @@ func result(q string) []byte {
 }
 
 func resultData(q string) (res ResultData) {
+	once.Do(load)
 	res.Query = q
 	var fb Func
 	if n, err := strconv.Btoui64(q, 0); err == nil {

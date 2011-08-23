@@ -147,7 +147,7 @@ function runQueryTick2(req, q) {
 	if(req.readyState == 4 && req.status == 200) {
 		$("output").innerHTML = req.responseText
 		if(history && history.replaceState)
-			history.replaceState(null, null, "?q=" + q)
+			history.replaceState(null, null, "?q=" + encodeURIComponent(q))
 	}
 	ticking = false
 }

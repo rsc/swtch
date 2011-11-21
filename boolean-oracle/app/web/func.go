@@ -122,6 +122,7 @@ var swap = []struct{
 // 17th century bell ringing algorithm.
 func computePermuteBit(n int) []int {
 	var out []int
+	var j, s, q, x, y int
 
 	c := make([]int, n)
 	o := make([]int, n)
@@ -129,17 +130,17 @@ func computePermuteBit(n int) []int {
 		o[i] = 1
 	}
 P2:
-	j := n
-	s := 0
+	j = n
+	s = 0
 P4:
-	q := c[j-1] + o[j-1]
+	q = c[j-1] + o[j-1]
 	if q < 0 {
 		goto P7
 	}
 	if q == j {
 		goto P6
 	}
-	x, y := j-c[j-1]+s, j-q+s
+	x, y = j-c[j-1]+s, j-q+s
 	if x < y {
 		out = append(out, x-1)
 	} else {

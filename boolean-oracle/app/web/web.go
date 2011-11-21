@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"template"
+	"old/template"
 )
 
 type Info struct {
@@ -27,7 +27,7 @@ var info []Info
 var xorInfo []Info
 var fatalErr os.Error
 
-var fs = http.FileServer("static", "/")
+var fs = http.FileServer(http.Dir("static"))
 
 func init() {
 	http.HandleFunc("/", main)
@@ -44,14 +44,14 @@ func load() {
 var once sync.Once
 
 func debug(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")	
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Write(blog.Bytes())
 }
 
 type byF []Info
 
-func (v byF) Len() int { return len(v) }
-func (v byF) Swap(i, j int) { v[i], v[j] = v[j], v[i] }
+func (v byF) Len() int           { return len(v) }
+func (v byF) Swap(i, j int)      { v[i], v[j] = v[j], v[i] }
 func (v byF) Less(i, j int) bool { return v[i].F < v[j].F }
 
 func loadInfo(name string) []Info {
@@ -83,13 +83,13 @@ func dumpInfo(info []Info) {
 		case inf.F == inf.P:
 			fmt.Fprintf(w, "%v = literal (size %d)\n", inf.F, inf.Size)
 			continue
-		case inf.F == inf.P & inf.Q:
+		case inf.F == inf.P&inf.Q:
 			op = "&"
-		case inf.F == inf.P | inf.Q:
+		case inf.F == inf.P|inf.Q:
 			op = "|"
-		case inf.F == inf.P ^ inf.Q:
+		case inf.F == inf.P^inf.Q:
 			op = "^"
-		case inf.F == inf.P ^ inf.Q ^ (NumFunc-1):
+		case inf.F == inf.P^inf.Q^(NumFunc-1):
 			op = "^^"
 		default:
 			fmt.Fprintf(os.Stderr, "unknown op: %v = %v ? %v\n", inf.F, inf.P, inf.Q)
@@ -99,7 +99,7 @@ func dumpInfo(info []Info) {
 	}
 	w.Flush()
 }
-	
+
 var V = literal(0)
 var W = literal(1)
 var X = literal(2)
@@ -107,17 +107,17 @@ var Y = literal(3)
 var Z = literal(4)
 
 type MainData struct {
-	Query string
+	Query  string
 	Result []byte
-	Mem uint64
+	Mem    uint64
 }
 
 type ResultData struct {
-	Error os.Error
-	Query string
-	Canon Func
-	Func Func
-	Tree *Tree
+	Error   os.Error
+	Query   string
+	Canon   Func
+	Func    Func
+	Tree    *Tree
 	XorTree *Tree
 }
 
@@ -139,7 +139,7 @@ func aboutHandler(w http.ResponseWriter, req *http.Request) {
 func main(w http.ResponseWriter, req *http.Request) {
 	if h := req.Host; strings.HasPrefix(h, "boolean-oracle.appspot.com") {
 		h = req.Host[:len(h)-len("appspot.com")] + "swtch.com"
-		http.Redirect(w, req, "http://" + h + req.URL.RawPath, 302)
+		http.Redirect(w, req, "http://"+h+req.URL.RawPath, 302)
 	}
 	if req.URL.Path != "/" {
 		fs.ServeHTTP(w, req)
@@ -195,10 +195,10 @@ func resultData(q string) (res ResultData) {
 		v := make([]int, NumVar)
 		for j := 0; j < NumInput; j++ {
 			for k := 0; k < NumVar; k++ {
-				v[k] = (j>>uint(k)) & 1
+				v[k] = (j >> uint(k)) & 1
 			}
 			if fp(v) != 0 {
-				fb |= 1<<uint(j)
+				fb |= 1 << uint(j)
 			}
 		}
 	}
@@ -244,9 +244,9 @@ func replaceBracket(s, l, r string) string {
 			if left >= 0 {
 				b.WriteString(s[wrote:left])
 				b.WriteString(l)
-				b.WriteString(s[left+len(`«`):i])
+				b.WriteString(s[left+len(`«`) : i])
 				b.WriteString(r)
-				wrote = i+len(`»`)
+				wrote = i + len(`»`)
 			}
 			left = -1
 		}
@@ -262,8 +262,8 @@ func overline(s string) string {
 		if s[i] == '!' {
 			b.WriteString(s[wrote:i])
 			b.WriteString("¬")
-			b.WriteString(s[i+1:i+2])
-			wrote = i+2
+			b.WriteString(s[i+1 : i+2])
+			wrote = i + 2
 		}
 	}
 	b.WriteString(s[wrote:])
@@ -271,8 +271,8 @@ func overline(s string) string {
 }
 
 type Tree struct {
-	Op string
-	F Func
+	Op   string
+	F    Func
 	L, R *Tree
 }
 
@@ -281,23 +281,23 @@ func (t *Tree) String() string {
 		switch t.F {
 		case V:
 			return "v"
-		case V^(NumFunc-1):
+		case V ^ (NumFunc - 1):
 			return "!v"
 		case W:
 			return "w"
-		case W^(NumFunc-1):
+		case W ^ (NumFunc - 1):
 			return "!w"
 		case X:
 			return "x"
-		case X^(NumFunc-1):
+		case X ^ (NumFunc - 1):
 			return "!x"
 		case Y:
 			return "y"
-		case Y^(NumFunc-1):
+		case Y ^ (NumFunc - 1):
 			return "!y"
 		case Z:
 			return "z"
-		case Z^(NumFunc-1):
+		case Z ^ (NumFunc - 1):
 			return "!z"
 		}
 		return t.F.String()
@@ -351,7 +351,7 @@ func findTree(f Func, info []Info) *Tree {
 			p = p&k | (p&m)<<s | (p>>s)&m
 			q = q&k | (q&m)<<s | (q>>s)&m
 
-			mask := Func(int32(f<<(32-NumInput))>>31)>>(32-NumInput)
+			mask := Func(int32(f<<(32-NumInput))>>31) >> (32 - NumInput)
 			fc := f ^ mask
 
 			if fc == inf.F {
@@ -361,7 +361,7 @@ func findTree(f Func, info []Info) *Tree {
 				// end we'll have the right ones for the
 				// original.
 				p = inf.P ^ mask
-				q = inf.Q ^ mask		
+				q = inf.Q ^ mask
 			}
 		}
 
@@ -377,17 +377,17 @@ func findTree(f Func, info []Info) *Tree {
 	switch {
 	case f == p:
 		return &Tree{"Lit", f, nil, nil}
-	case f == p | q:
+	case f == p|q:
 		op = "|"
-	case f == p & q:
+	case f == p&q:
 		op = "&"
-	case f == p & (q^(NumFunc-1)):
+	case f == p&(q^(NumFunc-1)):
 		op = "&"
 		q ^= NumFunc - 1
-	case f == (p^(NumFunc-1)) & q:
+	case f == (p^(NumFunc-1))&q:
 		op = "&"
 		p ^= NumFunc - 1
-	case f == p ^ q:
+	case f == p^q:
 		op = "^"
 	case f == p^q^(NumFunc-1):
 		op = "^"
@@ -403,4 +403,3 @@ func findTree(f Func, info []Info) *Tree {
 
 	return &Tree{op, f, findTree(p, info), findTree(q, info)}
 }
-

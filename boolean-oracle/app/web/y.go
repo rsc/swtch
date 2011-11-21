@@ -11,25 +11,27 @@ import (
 
 
 //line eqn.y:16
-type	yySymType	struct
+type yySymType struct
 {
-	yys	int;
+	yys int
 	f func([]int) int
 	v func([]int) []int
 }
-const	LNUM	= 57346
-const	LVAR	= 57347
-const	LIN	= 57348
-const	EOF	= 57349
-const	LOROR	= 57350
-const	LANDAND	= 57351
-const	LNE	= 57352
-const	LLE	= 57353
-const	LGE	= 57354
-const	LLSH	= 57355
-const	LRSH	= 57356
-const	LANDNOT	= 57357
-var	yyToknames	 =[]string {
+
+const LNUM = 57346
+const LVAR = 57347
+const LIN = 57348
+const EOF = 57349
+const LOROR = 57350
+const LANDAND = 57351
+const LNE = 57352
+const LLE = 57353
+const LGE = 57354
+const LLSH = 57355
+const LRSH = 57356
+const LANDNOT = 57357
+
+var yyToknames = []string{
 	"LNUM",
 	"LVAR",
 	"LIN",
@@ -54,11 +56,11 @@ var	yyToknames	 =[]string {
 	"LRSH",
 	"LANDNOT",
 }
-var	yyStatenames	 =[]string {
-}
-																																																											const	yyEofCode	= 1
-const	yyErrCode	= 2
-const	yyMaxDepth	= 200
+var yyStatenames = []string{}
+
+const yyEofCode = 1
+const yyErrCode = 2
+const yyMaxDepth = 200
 
 //line eqn.y:119
 
@@ -76,9 +78,7 @@ func (sp *ExprLex) Lex(yylval *yySymType) int {
 	}
 	switch s[0] {
 	case '+', '-', '*', '/', '%', '^', '(', ')', ',':
-	Single:
-		*sp = s[1:]
-		return int(s[0])
+		goto Single
 	case '!':
 		if len(s) > 1 && s[1] == '=' {
 			*sp = s[2:]
@@ -140,9 +140,8 @@ func (sp *ExprLex) Lex(yylval *yySymType) int {
 			*sp = s[2:]
 			return LIN
 		}
-		goto Default
+		fallthrough
 	default:
-	Default:
 		i := 0
 		for i < len(s) && '0' <= s[i] && s[i] <= '9' {
 			i++
@@ -159,6 +158,10 @@ func (sp *ExprLex) Lex(yylval *yySymType) int {
 		sp.Error("unexpected character")
 	}
 	panic("not reached")
+
+Single:
+	*sp = s[1:]
+	return int(s[0])
 }
 
 func (sp *ExprLex) Error(s string) {
@@ -178,7 +181,7 @@ func parse(s string) (f func([]int)int, err os.Error) {
 		case func([]int)int:
 			f, err = v, nil
 		case string:
-			f, err = nil, os.ErrorString(v)
+			f, err = nil, os.NewError(v)
 		case os.Error:
 			f, err = nil, v
 		default:
@@ -191,103 +194,107 @@ func parse(s string) (f func([]int)int, err os.Error) {
 }
 
 //line yacctab:1
-var	yyExca = []int {
--1, 1,
+var yyExca = []int{
+	-1, 1,
 	1, -1,
 	-2, 0,
 }
-const	yyNprod	= 39
-const	yyPrivate	= 57344
-var	yyTokenNames []string
-var	yyStates []string
-const	yyLast	= 118
-var	yyAct	= []int {
 
-   4,  19,  20,  22,  23,  21,  24,  25,  26,  27,
-  28,  29,  30,  31,  32,  34,  35,  33,  16,  17,
-  46,  47,  48,  49,  50,  51,  52,  53,  54,  55,
-  56,  57,  58,  59,  60,  61,  62,  17,  64,  45,
-   1,  63,  44,  18,   3,   6,  65,  19,  20,  22,
-  23,  21,  24,  25,  26,  27,  28,  29,  30,  31,
-  32,  34,  35,  33,   5,  67,  12,  13,   0,   2,
-  12,  13,  36,  37,  38,  39,  40,   0,   7,   8,
-   0,  10,   7,   8,  41,  10,  42,  43,   0,  66,
-   9,  11,  14,   0,   9,  11,  14,  25,  26,  27,
-  28,  29,  30,  31,  32,  34,  35,  33,  29,  30,
-  31,  32,  34,  35,  33,  15,  16,  17,
-};
-var	yyPact	= []int {
+const yyNprod = 39
+const yyPrivate = 57344
 
-  66,-1000, 108,-1000,  37,-1000,-1000,  66,  66,  66,
-  66,  66,-1000,-1000,  66,-1000,  66,  66,-1000,  66,
-  66,  66,  66,  66,  66,  66,  66,  66,  66,  66,
-  66,  66,  66,  66,  66,  66,-1000,-1000,-1000,-1000,
--1000,  10,  28,-1000,  11,  62,  81,  81,  81,  81,
-  81,  81,  88,  88,  88,  88,-1000,-1000,-1000,-1000,
--1000,-1000,-1000,-1000,  66,  -9,-1000,  -9,
-};
-var	yyPgo	= []int {
+var yyTokenNames []string
+var yyStates []string
 
-   0,   0,  64,  45,  69,  44,  42,  40,  39,
-};
-var	yyR1	= []int {
+const yyLast = 118
 
-   0,   7,   4,   4,   4,   5,   5,   1,   1,   1,
-   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,
-   1,   1,   1,   1,   1,   6,   6,   6,   8,   8,
-   2,   2,   2,   2,   2,   2,   3,   3,   3,
-};
-var	yyR2	= []int {
+var yyAct = []int{
 
-   0,   2,   1,   3,   3,   1,   3,   1,   3,   3,
-   3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
-   3,   3,   3,   3,   3,   2,   2,   3,   0,   2,
-   1,   2,   2,   2,   2,   2,   1,   1,   3,
-};
-var	yyChk	= []int {
+	4, 19, 20, 22, 23, 21, 24, 25, 26, 27,
+	28, 29, 30, 31, 32, 34, 35, 33, 16, 17,
+	46, 47, 48, 49, 50, 51, 52, 53, 54, 55,
+	56, 57, 58, 59, 60, 61, 62, 17, 64, 45,
+	1, 63, 44, 18, 3, 6, 65, 19, 20, 22,
+	23, 21, 24, 25, 26, 27, 28, 29, 30, 31,
+	32, 34, 35, 33, 5, 67, 12, 13, 0, 2,
+	12, 13, 36, 37, 38, 39, 40, 0, 7, 8,
+	0, 10, 7, 8, 41, 10, 42, 43, 0, 66,
+	9, 11, 14, 0, 9, 11, 14, 25, 26, 27,
+	28, 29, 30, 31, 32, 34, 35, 33, 29, 30,
+	31, 32, 34, 35, 33, 15, 16, 17,
+}
+var yyPact = []int{
 
--1000,  -7,  -4,  -5,  -1,  -2,  -3,  16,  17,  28,
-  19,  29,   4,   5,  30,   7,   8,   9,   6,  10,
-  11,  14,  12,  13,  15,  16,  17,  18,  19,  20,
-  21,  22,  23,  26,  24,  25,  -2,  -2,  -2,  -2,
-  -2,  -4,  -4,  -4,  -6,  -8,  -1,  -1,  -1,  -1,
-  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
-  -1,  -1,  -1,  31,  27,  -1,  27,  -1,
-};
-var	yyDef	= []int {
+	66, -1000, 108, -1000, 37, -1000, -1000, 66, 66, 66,
+	66, 66, -1000, -1000, 66, -1000, 66, 66, -1000, 66,
+	66, 66, 66, 66, 66, 66, 66, 66, 66, 66,
+	66, 66, 66, 66, 66, 66, -1000, -1000, -1000, -1000,
+	-1000, 10, 28, -1000, 11, 62, 81, 81, 81, 81,
+	81, 81, 88, 88, 88, 88, -1000, -1000, -1000, -1000,
+	-1000, -1000, -1000, -1000, 66, -9, -1000, -9,
+}
+var yyPgo = []int{
 
-   0,  -2,   0,   2,   5,   7,  30,   0,   0,   0,
-   0,   0,  36,  37,   0,   1,   0,   0,  28,   0,
-   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-   0,   0,   0,   0,   0,   0,  31,  32,  33,  34,
-  35,   0,   3,   4,   6,   0,   8,   9,  10,  11,
-  12,  13,  14,  15,  16,  17,  18,  19,  20,  21,
-  22,  23,  24,  38,  26,  25,  29,  27,
-};
-var	yyTok1	= []int {
+	0, 0, 64, 45, 69, 44, 42, 40, 39,
+}
+var yyR1 = []int{
 
-   1,   3,   3,   3,   3,   3,   3,   3,   3,   3,
-   3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
-   3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
-   3,   3,   3,  28,   3,   3,   3,  22,  23,   3,
-  30,  31,  20,  16,  27,  17,   3,  21,   3,   3,
-   3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
-  14,  10,  15,   3,   3,   3,   3,   3,   3,   3,
-   3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
-   3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
-   3,   3,   3,   3,  19,   3,   3,   3,   3,   3,
-   3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
-   3,   3,   3,   3,   3,   3,   3,   3,   3,   3,
-   3,   3,   3,   3,  18,   3,  29,
-};
-var	yyTok2	= []int {
+	0, 7, 4, 4, 4, 5, 5, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 6, 6, 6, 8, 8,
+	2, 2, 2, 2, 2, 2, 3, 3, 3,
+}
+var yyR2 = []int{
 
-   2,   3,   4,   5,   6,   7,   8,   9,  11,  12,
-  13,  24,  25,  26,
-};
-var	yyTok3	= []int {
-   0,
- };
+	0, 2, 1, 3, 3, 1, 3, 1, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 2, 2, 3, 0, 2,
+	1, 2, 2, 2, 2, 2, 1, 1, 3,
+}
+var yyChk = []int{
+
+	-1000, -7, -4, -5, -1, -2, -3, 16, 17, 28,
+	19, 29, 4, 5, 30, 7, 8, 9, 6, 10,
+	11, 14, 12, 13, 15, 16, 17, 18, 19, 20,
+	21, 22, 23, 26, 24, 25, -2, -2, -2, -2,
+	-2, -4, -4, -4, -6, -8, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, 31, 27, -1, 27, -1,
+}
+var yyDef = []int{
+
+	0, -2, 0, 2, 5, 7, 30, 0, 0, 0,
+	0, 0, 36, 37, 0, 1, 0, 0, 28, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 31, 32, 33, 34,
+	35, 0, 3, 4, 6, 0, 8, 9, 10, 11,
+	12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+	22, 23, 24, 38, 26, 25, 29, 27,
+}
+var yyTok1 = []int{
+
+	1, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 28, 3, 3, 3, 22, 23, 3,
+	30, 31, 20, 16, 27, 17, 3, 21, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	14, 10, 15, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 19, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3, 18, 3, 29,
+}
+var yyTok2 = []int{
+
+	2, 3, 4, 5, 6, 7, 8, 9, 11, 12,
+	13, 24, 25, 26,
+}
+var yyTok3 = []int{
+	0,
+}
 
 //line yaccpar:1
 
@@ -493,7 +500,7 @@ yydefault:
 
 	yynt := yyn
 	yypt := yyp
-	_ = yypt		// guard against "declared and not used"
+	_ = yypt // guard against "declared and not used"
 
 	yyp -= yyR2[yyn]
 	yyVAL = yyS[yyp+1]
@@ -514,108 +521,108 @@ yydefault:
 	// dummy call; replaced with literal code
 	switch yynt {
 
-case 1:
-//line eqn.y:38
-{ panic(yyS[yypt-1].f) }
-case 2:
-	yyVAL.f = yyS[yypt-0].f;
-case 3:
-//line eqn.y:43
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) != 0 || g(val) != 0) } }
-case 4:
-//line eqn.y:45
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) != 0 && g(val) != 0) } }
-case 5:
-	yyVAL.f = yyS[yypt-0].f;
-case 6:
-//line eqn.y:50
-{ f, l := yyS[yypt-2].f, yyS[yypt-0].v; yyVAL.f = func(val []int) int { x := f(val); for _, y := range l(val) { if x == y { return 1 } }; return 0 } }
-case 7:
-	yyVAL.f = yyS[yypt-0].f;
-case 8:
-//line eqn.y:55
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) ==  g(val)) } }
-case 9:
-//line eqn.y:57
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) != g(val)) } }
-case 10:
-//line eqn.y:59
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) < g(val)) } }
-case 11:
-//line eqn.y:61
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) <= g(val)) } }
-case 12:
-//line eqn.y:63
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) >= g(val)) } }
-case 13:
-//line eqn.y:65
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) > g(val)) } }
-case 14:
-//line eqn.y:67
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) + g(val) } }
-case 15:
-//line eqn.y:69
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) - g(val) } }
-case 16:
-//line eqn.y:71
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) | g(val) } }
-case 17:
-//line eqn.y:73
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) ^ g(val) } }
-case 18:
-//line eqn.y:75
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) * g(val) } }
-case 19:
-//line eqn.y:77
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) / g(val) } }
-case 20:
-//line eqn.y:79
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int {return f(val) % g(val) } }
-case 21:
-//line eqn.y:81
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) & g(val) } }
-case 22:
-//line eqn.y:83
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) &^ g(val) } }
-case 23:
-//line eqn.y:85
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) << uint(g(val)) } }
-case 24:
-//line eqn.y:87
-{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) >> uint(g(val)) } }
-case 25:
-//line eqn.y:91
-{ f := yyS[yypt-0].f; yyVAL.v = func(val []int) []int { return []int{f(val)} } }
-case 26:
-//line eqn.y:93
-{ yyVAL.v = yyS[yypt-1].v }
-case 27:
-//line eqn.y:95
-{ l, f := yyS[yypt-2].v, yyS[yypt-0].f; yyVAL.v = func(val []int) []int { return append(l(val), f(val)) } }
-case 30:
-	yyVAL.f = yyS[yypt-0].f;
-case 31:
-//line eqn.y:103
-{ f := yyS[yypt-0].f; yyVAL.f = f }
-case 32:
-//line eqn.y:105
-{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return -f(val) } }
-case 33:
-//line eqn.y:107
-{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) == 0) } }
-case 34:
-//line eqn.y:109
-{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return ^f(val) } }
-case 35:
-//line eqn.y:111
-{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return ^f(val) } }
-case 36:
-	yyVAL.f = yyS[yypt-0].f;
-case 37:
-	yyVAL.f = yyS[yypt-0].f;
-case 38:
-//line eqn.y:117
-{ yyVAL.f = yyS[yypt-1].f }
+	case 1:
+		//line eqn.y:38
+		{ panic(yyS[yypt-1].f) }
+	case 2:
+		yyVAL.f = yyS[yypt-0].f
+	case 3:
+		//line eqn.y:43
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) != 0 || g(val) != 0) } }
+	case 4:
+		//line eqn.y:45
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) != 0 && g(val) != 0) } }
+	case 5:
+		yyVAL.f = yyS[yypt-0].f
+	case 6:
+		//line eqn.y:50
+		{ f, l := yyS[yypt-2].f, yyS[yypt-0].v; yyVAL.f = func(val []int) int { x := f(val); for _, y := range l(val) { if x == y { return 1 } }; return 0 } }
+	case 7:
+		yyVAL.f = yyS[yypt-0].f
+	case 8:
+		//line eqn.y:55
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) ==  g(val)) } }
+	case 9:
+		//line eqn.y:57
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) != g(val)) } }
+	case 10:
+		//line eqn.y:59
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) < g(val)) } }
+	case 11:
+		//line eqn.y:61
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) <= g(val)) } }
+	case 12:
+		//line eqn.y:63
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) >= g(val)) } }
+	case 13:
+		//line eqn.y:65
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) > g(val)) } }
+	case 14:
+		//line eqn.y:67
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) + g(val) } }
+	case 15:
+		//line eqn.y:69
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) - g(val) } }
+	case 16:
+		//line eqn.y:71
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) | g(val) } }
+	case 17:
+		//line eqn.y:73
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) ^ g(val) } }
+	case 18:
+		//line eqn.y:75
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) * g(val) } }
+	case 19:
+		//line eqn.y:77
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) / g(val) } }
+	case 20:
+		//line eqn.y:79
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int {return f(val) % g(val) } }
+	case 21:
+		//line eqn.y:81
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) & g(val) } }
+	case 22:
+		//line eqn.y:83
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) &^ g(val) } }
+	case 23:
+		//line eqn.y:85
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) << uint(g(val)) } }
+	case 24:
+		//line eqn.y:87
+		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) >> uint(g(val)) } }
+	case 25:
+		//line eqn.y:91
+		{ f := yyS[yypt-0].f; yyVAL.v = func(val []int) []int { return []int{f(val)} } }
+	case 26:
+		//line eqn.y:93
+		{ yyVAL.v = yyS[yypt-1].v }
+	case 27:
+		//line eqn.y:95
+		{ l, f := yyS[yypt-2].v, yyS[yypt-0].f; yyVAL.v = func(val []int) []int { return append(l(val), f(val)) } }
+	case 30:
+		yyVAL.f = yyS[yypt-0].f
+	case 31:
+		//line eqn.y:103
+		{ f := yyS[yypt-0].f; yyVAL.f = f }
+	case 32:
+		//line eqn.y:105
+		{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return -f(val) } }
+	case 33:
+		//line eqn.y:107
+		{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) == 0) } }
+	case 34:
+		//line eqn.y:109
+		{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return ^f(val) } }
+	case 35:
+		//line eqn.y:111
+		{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return ^f(val) } }
+	case 36:
+		yyVAL.f = yyS[yypt-0].f
+	case 37:
+		yyVAL.f = yyS[yypt-0].f
+	case 38:
+		//line eqn.y:117
+		{ yyVAL.f = yyS[yypt-1].f }
 	}
 	goto yystack /* stack new state and value */
 }

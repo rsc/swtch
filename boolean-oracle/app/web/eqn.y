@@ -131,9 +131,7 @@ func (sp *ExprLex) Lex(yylval *yySymType) int {
 	}
 	switch s[0] {
 	case '+', '-', '*', '/', '%', '^', '(', ')', ',':
-	Single:
-		*sp = s[1:]
-		return int(s[0])
+		goto Single
 	case '!':
 		if len(s) > 1 && s[1] == '=' {
 			*sp = s[2:]
@@ -195,9 +193,8 @@ func (sp *ExprLex) Lex(yylval *yySymType) int {
 			*sp = s[2:]
 			return LIN
 		}
-		goto Default
+		fallthrough
 	default:
-	Default:
 		i := 0
 		for i < len(s) && '0' <= s[i] && s[i] <= '9' {
 			i++
@@ -214,6 +211,10 @@ func (sp *ExprLex) Lex(yylval *yySymType) int {
 		sp.Error("unexpected character")
 	}
 	panic("not reached")
+
+Single:
+	*sp = s[1:]
+	return int(s[0])
 }
 
 func (sp *ExprLex) Error(s string) {
@@ -233,7 +234,7 @@ func parse(s string) (f func([]int)int, err os.Error) {
 		case func([]int)int:
 			f, err = v, nil
 		case string:
-			f, err = nil, os.ErrorString(v)
+			f, err = nil, os.NewError(v)
 		case os.Error:
 			f, err = nil, v
 		default:

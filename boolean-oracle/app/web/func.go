@@ -7,9 +7,9 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"gob"
-	"io"
+	"encoding/gob"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"runtime"
@@ -20,8 +20,8 @@ const NumVar = 5
 
 // Derived constants.
 const (
-	NumInput = 1<<NumVar
-	NumFunc = 1<<NumInput
+	NumInput = 1 << NumVar
+	NumFunc  = 1 << NumInput
 )
 
 // A Func represents a single boolean function.
@@ -66,9 +66,9 @@ var maxFunc = []int{1, 2, 4, 14, 222, 616126}
 // http://oeis.org/A007814
 // See also Knuth 7.2.1.1.
 var grayBit = [32]uint8{
-	0, 1, 0, 2, 0, 1, 0, 3, 
-	0, 1, 0, 2, 0, 1, 0, 4, 
-	0, 1, 0, 2, 0, 1, 0, 3, 
+	0, 1, 0, 2, 0, 1, 0, 3,
+	0, 1, 0, 2, 0, 1, 0, 4,
+	0, 1, 0, 2, 0, 1, 0, 3,
 	0, 1, 0, 2, 0, 1, 0, 5,
 }
 
@@ -84,8 +84,8 @@ func init() {
 // That is, use
 //	m, s := invert[i].mask, invert[i].shift
 //	f1 := (f&m)<<s | (f>>s)&m
-var invert = []struct{
-	mask Func
+var invert = []struct {
+	mask  Func
 	shift uint
 }{
 	{0x55555555, 1},
@@ -106,9 +106,9 @@ var permuteBit = computePermuteBit(NumVar)
 // That is, use:
 //	k, m, s := swap[i].keep, swap[i].mask, swap[i].shift
 //	f1 := f&k | (f&m)<<s | (f>>s)&m
-var swap = []struct{
-	keep Func
-	mask Func
+var swap = []struct {
+	keep  Func
+	mask  Func
 	shift uint
 }{
 	{0x99999999, 0x22222222, 1},
@@ -161,7 +161,7 @@ P6:
 P7:
 	o[j-1] = -o[j-1]
 	j--
-	goto P4		
+	goto P4
 }
 
 func fact(i int) int {
@@ -179,7 +179,7 @@ func findMin(f Func) Func {
 	for _, i := range grayBit[0:NumInput] {
 		m, s := invert[i].mask, invert[i].shift
 		f = (f&m)<<s | (f>>s)&m
-		mask := Func(int32(f<<(32-NumInput))>>31)>>(32-NumInput)
+		mask := Func(int32(f<<(32-NumInput))>>31) >> (32 - NumInput)
 		fc := f ^ mask
 
 		if fc < minf {
@@ -190,7 +190,7 @@ func findMin(f Func) Func {
 		for _, j := range permuteBit {
 			k, m, s := swap[j].keep, swap[j].mask, swap[j].shift
 			f = f&k | (f&m)<<s | (f>>s)&m
-			mask := Func(int32(f<<(32-NumInput))>>31)>>(32-NumInput)
+			mask := Func(int32(f<<(32-NumInput))>>31) >> (32 - NumInput)
 			fc := f ^ mask
 
 			if fc < minf {
@@ -198,7 +198,7 @@ func findMin(f Func) Func {
 			}
 
 		}
-		
+
 		if f != f1 {
 			panic("min permute did not cycle")
 		}
@@ -208,16 +208,16 @@ func findMin(f Func) Func {
 		panic("min did not cycle")
 	}
 
-	return minf	
+	return minf
 }
 
 // A Savepoint records information for starting again later.
 type Savepoint struct {
-	Howto []Record
+	Howto  []Record
 	BySize [][]Func
 }
 
-func gobMarshal(name string, data interface{}) os.Error {
+func gobMarshal(name string, data interface{}) error {
 	f, err := os.Create(name)
 	if err != nil {
 		panic(err)
@@ -231,16 +231,16 @@ func gobMarshal(name string, data interface{}) os.Error {
 
 var blog bytes.Buffer
 
-func gobUnmarshal(name string, data interface{}) os.Error {
-	var err os.Error
+func gobUnmarshal(name string, data interface{}) error {
+	var err error
 	var f io.Reader
 	f, err = os.Open(name)
 	if err != nil {
-		f1, err := os.Open(name+".aa")
+		f1, err := os.Open(name + ".aa")
 		if err != nil {
 			return err
 		}
-		f2, err := os.Open(name+".ab")
+		f2, err := os.Open(name + ".ab")
 		if err != nil {
 			return err
 		}

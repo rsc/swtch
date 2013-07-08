@@ -1,21 +1,19 @@
-
 //line eqn.y:5
-
 package web
 
+import __yyfmt__ "fmt"
+
+//line eqn.y:6
 import (
-	"fmt"
-	"os"
+	"errors"
 	"strconv"
 )
 
-
-//line eqn.y:16
-type yySymType struct
-{
+//line eqn.y:15
+type yySymType struct {
 	yys int
-	f func([]int) int
-	v func([]int) []int
+	f   func([]int) int
+	v   func([]int) []int
 }
 
 const LNUM = 57346
@@ -62,8 +60,7 @@ const yyEofCode = 1
 const yyErrCode = 2
 const yyMaxDepth = 200
 
-//line eqn.y:119
-
+//line eqn.y:118
 
 type ExprLex string
 
@@ -149,7 +146,7 @@ func (sp *ExprLex) Lex(yylval *yySymType) int {
 		if i > 0 {
 			n, err := strconv.Atoi(string(s[:i]))
 			if err != nil {
-				sp.Error(err.String())
+				sp.Error(err.Error())
 			}
 			yylval.f = func(val []int) int { return n }
 			*sp = s[i:]
@@ -175,20 +172,20 @@ func b(v bool) int {
 	return 0
 }
 
-func parse(s string) (f func([]int)int, err os.Error) {
+func parse(s string) (f func([]int) int, err error) {
 	defer func() {
 		switch v := recover().(type) {
-		case func([]int)int:
+		case func([]int) int:
 			f, err = v, nil
 		case string:
-			f, err = nil, os.NewError(v)
-		case os.Error:
+			f, err = nil, errors.New(v)
+		case error:
 			f, err = nil, v
 		default:
 			panic(v)
 		}
 	}()
-	
+
 	yyParse((*ExprLex)(&s))
 	panic("internal error")
 }
@@ -310,12 +307,13 @@ type yyLexer interface {
 const yyFlag = -1000
 
 func yyTokname(c int) string {
-	if c > 0 && c <= len(yyToknames) {
-		if yyToknames[c-1] != "" {
-			return yyToknames[c-1]
+	// 4 is TOKSTART above
+	if c >= 4 && c-4 < len(yyToknames) {
+		if yyToknames[c-4] != "" {
+			return yyToknames[c-4]
 		}
 	}
-	return fmt.Sprintf("tok-%v", c)
+	return __yyfmt__.Sprintf("tok-%v", c)
 }
 
 func yyStatname(s int) string {
@@ -324,7 +322,7 @@ func yyStatname(s int) string {
 			return yyStatenames[s]
 		}
 	}
-	return fmt.Sprintf("state-%v", s)
+	return __yyfmt__.Sprintf("state-%v", s)
 }
 
 func yylex1(lex yyLexer, lval *yySymType) int {
@@ -357,7 +355,7 @@ out:
 		c = yyTok2[1] /* unknown char */
 	}
 	if yyDebug >= 3 {
-		fmt.Printf("lex %U %s\n", uint(char), yyTokname(c))
+		__yyfmt__.Printf("lex %U %s\n", uint(char), yyTokname(c))
 	}
 	return c
 }
@@ -384,7 +382,7 @@ ret1:
 yystack:
 	/* put a state and value onto the stack */
 	if yyDebug >= 4 {
-		fmt.Printf("char %v in %v\n", yyTokname(yychar), yyStatname(yystate))
+		__yyfmt__.Printf("char %v in %v\n", yyTokname(yychar), yyStatname(yystate))
 	}
 
 	yyp++
@@ -453,8 +451,8 @@ yydefault:
 			yylex.Error("syntax error")
 			Nerrs++
 			if yyDebug >= 1 {
-				fmt.Printf("%s", yyStatname(yystate))
-				fmt.Printf("saw %s\n", yyTokname(yychar))
+				__yyfmt__.Printf("%s", yyStatname(yystate))
+				__yyfmt__.Printf("saw %s\n", yyTokname(yychar))
 			}
 			fallthrough
 
@@ -471,10 +469,9 @@ yydefault:
 					}
 				}
 
-				/* the current p has no shift onn "error", pop stack */
+				/* the current p has no shift on "error", pop stack */
 				if yyDebug >= 2 {
-					fmt.Printf("error recovery pops state %d, uncovers %d\n",
-						yyS[yyp].yys, yyS[yyp-1].yys)
+					__yyfmt__.Printf("error recovery pops state %d\n", yyS[yyp].yys)
 				}
 				yyp--
 			}
@@ -483,7 +480,7 @@ yydefault:
 
 		case 3: /* no shift yet; clobber input char */
 			if yyDebug >= 2 {
-				fmt.Printf("error recovery discards %s\n", yyTokname(yychar))
+				__yyfmt__.Printf("error recovery discards %s\n", yyTokname(yychar))
 			}
 			if yychar == yyEofCode {
 				goto ret1
@@ -495,7 +492,7 @@ yydefault:
 
 	/* reduction by production yyn */
 	if yyDebug >= 2 {
-		fmt.Printf("reduce %v in:\n\t%v\n", yyn, yyStatname(yystate))
+		__yyfmt__.Printf("reduce %v in:\n\t%v\n", yyn, yyStatname(yystate))
 	}
 
 	yynt := yyn
@@ -522,107 +519,202 @@ yydefault:
 	switch yynt {
 
 	case 1:
-		//line eqn.y:38
-		{ panic(yyS[yypt-1].f) }
+		//line eqn.y:37
+		{
+			panic(yyS[yypt-1].f)
+		}
 	case 2:
 		yyVAL.f = yyS[yypt-0].f
 	case 3:
-		//line eqn.y:43
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) != 0 || g(val) != 0) } }
+		//line eqn.y:42
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return b(f(val) != 0 || g(val) != 0) }
+		}
 	case 4:
-		//line eqn.y:45
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) != 0 && g(val) != 0) } }
+		//line eqn.y:44
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return b(f(val) != 0 && g(val) != 0) }
+		}
 	case 5:
 		yyVAL.f = yyS[yypt-0].f
 	case 6:
-		//line eqn.y:50
-		{ f, l := yyS[yypt-2].f, yyS[yypt-0].v; yyVAL.f = func(val []int) int { x := f(val); for _, y := range l(val) { if x == y { return 1 } }; return 0 } }
+		//line eqn.y:49
+		{
+			f, l := yyS[yypt-2].f, yyS[yypt-0].v
+			yyVAL.f = func(val []int) int {
+				x := f(val)
+				for _, y := range l(val) {
+					if x == y {
+						return 1
+					}
+				}
+				return 0
+			}
+		}
 	case 7:
 		yyVAL.f = yyS[yypt-0].f
 	case 8:
-		//line eqn.y:55
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) ==  g(val)) } }
+		//line eqn.y:54
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return b(f(val) == g(val)) }
+		}
 	case 9:
-		//line eqn.y:57
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) != g(val)) } }
+		//line eqn.y:56
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return b(f(val) != g(val)) }
+		}
 	case 10:
-		//line eqn.y:59
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) < g(val)) } }
+		//line eqn.y:58
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return b(f(val) < g(val)) }
+		}
 	case 11:
-		//line eqn.y:61
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) <= g(val)) } }
+		//line eqn.y:60
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return b(f(val) <= g(val)) }
+		}
 	case 12:
-		//line eqn.y:63
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) >= g(val)) } }
+		//line eqn.y:62
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return b(f(val) >= g(val)) }
+		}
 	case 13:
-		//line eqn.y:65
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) > g(val)) } }
+		//line eqn.y:64
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return b(f(val) > g(val)) }
+		}
 	case 14:
-		//line eqn.y:67
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) + g(val) } }
+		//line eqn.y:66
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) + g(val) }
+		}
 	case 15:
-		//line eqn.y:69
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) - g(val) } }
+		//line eqn.y:68
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) - g(val) }
+		}
 	case 16:
-		//line eqn.y:71
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) | g(val) } }
+		//line eqn.y:70
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) | g(val) }
+		}
 	case 17:
-		//line eqn.y:73
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) ^ g(val) } }
+		//line eqn.y:72
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) ^ g(val) }
+		}
 	case 18:
-		//line eqn.y:75
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) * g(val) } }
+		//line eqn.y:74
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) * g(val) }
+		}
 	case 19:
-		//line eqn.y:77
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) / g(val) } }
+		//line eqn.y:76
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) / g(val) }
+		}
 	case 20:
-		//line eqn.y:79
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int {return f(val) % g(val) } }
+		//line eqn.y:78
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) % g(val) }
+		}
 	case 21:
-		//line eqn.y:81
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) & g(val) } }
+		//line eqn.y:80
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) & g(val) }
+		}
 	case 22:
-		//line eqn.y:83
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) &^ g(val) } }
+		//line eqn.y:82
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) &^ g(val) }
+		}
 	case 23:
-		//line eqn.y:85
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) << uint(g(val)) } }
+		//line eqn.y:84
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) << uint(g(val)) }
+		}
 	case 24:
-		//line eqn.y:87
-		{ f, g := yyS[yypt-2].f, yyS[yypt-0].f; yyVAL.f = func(val []int) int { return f(val) >> uint(g(val)) } }
+		//line eqn.y:86
+		{
+			f, g := yyS[yypt-2].f, yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return f(val) >> uint(g(val)) }
+		}
 	case 25:
-		//line eqn.y:91
-		{ f := yyS[yypt-0].f; yyVAL.v = func(val []int) []int { return []int{f(val)} } }
+		//line eqn.y:90
+		{
+			f := yyS[yypt-0].f
+			yyVAL.v = func(val []int) []int { return []int{f(val)} }
+		}
 	case 26:
-		//line eqn.y:93
-		{ yyVAL.v = yyS[yypt-1].v }
+		//line eqn.y:92
+		{
+			yyVAL.v = yyS[yypt-1].v
+		}
 	case 27:
-		//line eqn.y:95
-		{ l, f := yyS[yypt-2].v, yyS[yypt-0].f; yyVAL.v = func(val []int) []int { return append(l(val), f(val)) } }
+		//line eqn.y:94
+		{
+			l, f := yyS[yypt-2].v, yyS[yypt-0].f
+			yyVAL.v = func(val []int) []int { return append(l(val), f(val)) }
+		}
 	case 30:
 		yyVAL.f = yyS[yypt-0].f
 	case 31:
-		//line eqn.y:103
-		{ f := yyS[yypt-0].f; yyVAL.f = f }
+		//line eqn.y:102
+		{
+			f := yyS[yypt-0].f
+			yyVAL.f = f
+		}
 	case 32:
-		//line eqn.y:105
-		{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return -f(val) } }
+		//line eqn.y:104
+		{
+			f := yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return -f(val) }
+		}
 	case 33:
-		//line eqn.y:107
-		{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return b(f(val) == 0) } }
+		//line eqn.y:106
+		{
+			f := yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return b(f(val) == 0) }
+		}
 	case 34:
-		//line eqn.y:109
-		{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return ^f(val) } }
+		//line eqn.y:108
+		{
+			f := yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return ^f(val) }
+		}
 	case 35:
-		//line eqn.y:111
-		{ f := yyS[yypt-0].f; yyVAL.f = func(val []int) int { return ^f(val) } }
+		//line eqn.y:110
+		{
+			f := yyS[yypt-0].f
+			yyVAL.f = func(val []int) int { return ^f(val) }
+		}
 	case 36:
 		yyVAL.f = yyS[yypt-0].f
 	case 37:
 		yyVAL.f = yyS[yypt-0].f
 	case 38:
-		//line eqn.y:117
-		{ yyVAL.f = yyS[yypt-1].f }
+		//line eqn.y:116
+		{
+			yyVAL.f = yyS[yypt-1].f
+		}
 	}
 	goto yystack /* stack new state and value */
 }

@@ -7,15 +7,15 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"http"
+	"html/template"
 	"io"
+	"net/http"
 	"os"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"old/template"
 )
 
 type Info struct {
@@ -25,7 +25,7 @@ type Info struct {
 
 var info []Info
 var xorInfo []Info
-var fatalErr os.Error
+var fatalErr error
 
 var fs = http.FileServer(http.Dir("static"))
 
@@ -108,12 +108,12 @@ var Z = literal(4)
 
 type MainData struct {
 	Query  string
-	Result []byte
+	Result template.HTML
 	Mem    uint64
 }
 
 type ResultData struct {
-	Error   os.Error
+	Error   error
 	Query   string
 	Canon   Func
 	Func    Func
@@ -122,12 +122,12 @@ type ResultData struct {
 }
 
 func run(w io.Writer, file string, data interface{}) {
-	t := template.New(nil)
-	t.SetDelims("«", "»")
-	if err := t.ParseFile(file); err != nil {
-		fmt.Fprintf(w, "Parsing %s: %s", file, err)
+	t, err := template.New("").Delims("«", "»").ParseFiles(file)
+	if err != nil {
+		panic(fmt.Errorf("Parsing %s: %s\n", file, err))
+		return
 	}
-	if err := t.Execute(w, data); err != nil {
+	if err := t.Lookup(file).Execute(w, data); err != nil {
 		fmt.Fprintf(w, "\n\nError executing template %s: %s", file, err)
 	}
 }
@@ -139,7 +139,7 @@ func aboutHandler(w http.ResponseWriter, req *http.Request) {
 func main(w http.ResponseWriter, req *http.Request) {
 	if h := req.Host; strings.HasPrefix(h, "boolean-oracle.appspot.com") {
 		h = req.Host[:len(h)-len("appspot.com")] + "swtch.com"
-		http.Redirect(w, req, "http://"+h+req.URL.RawPath, 302)
+		http.Redirect(w, req, "http://"+h+req.RequestURI, 302)
 	}
 	if req.URL.Path != "/" {
 		fs.ServeHTTP(w, req)
@@ -147,14 +147,17 @@ func main(w http.ResponseWriter, req *http.Request) {
 	}
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Fprintln(w, "Oops:", err)
+			stk := make([]byte, 5000)
+			n := runtime.Stack(stk, false)
+			stk = stk[:n]
+			fmt.Fprintf(w, "Failure: %v\n%s\n", err, stk)
 		}
 	}()
 
 	q := req.FormValue("q")
-	data := &MainData{Query: q, Mem: runtime.MemStats.Sys}
+	data := &MainData{Query: q, Mem: 0}
 	if q != "" {
-		data.Result = result(q)
+		data.Result = template.HTML(result(q))
 	}
 	run(w, "main.html", data)
 }
@@ -176,7 +179,7 @@ func resultData(q string) (res ResultData) {
 	once.Do(load)
 	res.Query = q
 	var fb Func
-	if n, err := strconv.Btoui64(q, 0); err == nil {
+	if n, err := strconv.ParseUint(q, 0, 64); err == nil {
 		fb = Func(n)
 	} else {
 		f, err := parse(q)
@@ -209,7 +212,7 @@ func resultData(q string) (res ResultData) {
 	return
 }
 
-func (t *Tree) HTML() string {
+func (t *Tree) HTML() template.HTML {
 	s := t.String()
 	s = strings.Replace(s, "(", `«`, -1)
 	s = strings.Replace(s, ")", `»`, -1)
@@ -220,7 +223,7 @@ func (t *Tree) HTML() string {
 	s = replaceBracket(s, "<font size=+4>(</font>", "<font size=+4>)</font>")
 	s = replaceBracket(s, "<font size=+5>(</font>", "<font size=+5>)</font>")
 	s = overline(s)
-	return s
+	return template.HTML(s)
 }
 
 func esc(s string) string {

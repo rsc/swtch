@@ -6,8 +6,7 @@
 package web
 
 import (
-	"fmt"
-	"os"
+	"errors"
 	"strconv"
 )
 
@@ -202,7 +201,7 @@ func (sp *ExprLex) Lex(yylval *yySymType) int {
 		if i > 0 {
 			n, err := strconv.Atoi(string(s[:i]))
 			if err != nil {
-				sp.Error(err.String())
+				sp.Error(err.Error())
 			}
 			yylval.f = func(val []int) int { return n }
 			*sp = s[i:]
@@ -228,14 +227,14 @@ func b(v bool) int {
 	return 0
 }
 
-func parse(s string) (f func([]int)int, err os.Error) {
+func parse(s string) (f func([]int)int, err error) {
 	defer func() {
 		switch v := recover().(type) {
 		case func([]int)int:
 			f, err = v, nil
 		case string:
-			f, err = nil, os.NewError(v)
-		case os.Error:
+			f, err = nil, errors.New(v)
+		case error:
 			f, err = nil, v
 		default:
 			panic(v)

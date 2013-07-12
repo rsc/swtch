@@ -1,10 +1,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// See comment at top of compute.go for information about how to run.
+
 package main
 
 import (
-	"gob"
+	"encoding/gob"
 	"fmt"
 	"os"
 )
@@ -117,6 +119,7 @@ var swap = []struct {
 // 17th century bell ringing algorithm.
 func computePermuteBit(n int) []int {
 	var out []int
+	var x, y int
 
 	c := make([]int, n)
 	o := make([]int, n)
@@ -134,7 +137,7 @@ P4:
 	if q == j {
 		goto P6
 	}
-	x, y := j-c[j-1]+s, j-q+s
+	x, y = j-c[j-1]+s, j-q+s
 	if x < y {
 		out = append(out, x-1)
 	} else {
@@ -211,7 +214,7 @@ type Savepoint struct {
 	BySize [][]Func
 }
 
-func gobMarshal(name string, data interface{}) os.Error {
+func gobMarshal(name string, data interface{}) error {
 	f, err := os.Create(name)
 	if err != nil {
 		panic(err)
@@ -223,7 +226,7 @@ func gobMarshal(name string, data interface{}) os.Error {
 	return nil
 }
 
-func gobUnmarshal(name string, data interface{}) os.Error {
+func gobUnmarshal(name string, data interface{}) error {
 	f, err := os.Open(name)
 	if err != nil {
 		return err

@@ -1,14 +1,20 @@
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+// This program rewrites "gob" encoded tables into raw binary tables.
+// The latter require less memory to decode on App Engine startup.
+
 package main
 
 import (
 	"bufio"
 	"encoding/binary"
+	"encoding/gob"
+	"io"
 	"log"
 	"os"
-	"io"
-	"gob"
-	"runtime"
 	"reflect"
+	"runtime"
 )
 
 type Func uint32
@@ -18,28 +24,28 @@ type Record struct {
 }
 
 type Savepoint struct {
-	Howto []Record
+	Howto  []Record
 	BySize [][]Func
 }
 
-func gobUnmarshal(name string, data interface{}) os.Error {
-	var err os.Error
+func gobUnmarshal(name string, data interface{}) error {
+	var err error
 	var f io.Reader
 	f, err = os.Open(name)
 	if err != nil {
-		f1, err := os.Open(name+".aa")
+		f1, err := os.Open(name + ".aa")
 		if err != nil {
 			return err
 		}
-		f2, err := os.Open(name+".ab")
+		f2, err := os.Open(name + ".ab")
 		if err != nil {
 			return err
 		}
 		f = io.MultiReader(f1, f2)
 	}
-println("decode", name)
+	println("decode", name)
 	err = gob.NewDecoder(f).Decode(data)
-println("done", len(data.(*Savepoint).Howto))
+	println("done", len(data.(*Savepoint).Howto))
 	runtime.GC()
 	if err != nil {
 		panic(err)
@@ -117,10 +123,10 @@ func rawUnmarshal(name string, sp *Savepoint) {
 		sp.BySize[i] = x
 	}
 }
-		
+
 func main() {
 	var sp Savepoint
-	
+
 	if err := gobUnmarshal(os.Args[1], &sp); err != nil {
 		log.Fatal(err)
 	}
@@ -131,4 +137,3 @@ func main() {
 		log.Fatal("not equal")
 	}
 }
-

@@ -101,3 +101,9 @@ ssh-%:
 allow-http:
 	gcloud compute firewall-rules create http --description "Incoming http allowed." --allow tcp:80 tcp:443
 
+# Create signed URLs to allow the cron job in updatedash to update the dashboards,
+# without having general write access to the gs://swtch/ bucket.
+signurls:
+	gsutil signurl -p notasecret -m PUT -d 1000d swtch-com-*.p12 gs://swtch/www/godash/cl | sed -n 's;^.*https://;https://;p' >update-cl.url
+	gsutil signurl -p notasecret -m PUT -d 1000d swtch-com-*.p12 gs://swtch/www/godash/release | sed -n 's;^.*https://;https://;p' >update-release.url
+	gsutil cp update-*.url gs://swtch/cron/

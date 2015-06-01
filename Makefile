@@ -1,8 +1,8 @@
 # Makefile for deploying redirector on Google Cloud Platform.
 # 
 # To customize for personal use:
-#   * Change gs_redirector to refer to your own Google Cloud Storage bucket.
-#   * make install-redirector
+#   * Change gs_server to refer to your own Google Cloud Storage bucket.
+#   * make install-server
 #
 # To add a new host:
 #   * Copy the start-rsc-io stanza and customize VM name, address name, import= and repo=.
@@ -19,8 +19,8 @@
 #   * make start-your-vm
 
 # gs:// URL for Google Cloud Storage location of redirector binary.
-gs_server=gs://swtch/server
-gs_webroot=gs://swtch/web
+gs_server=gs://swtch/server.cloud
+gs_webroot=gs://swtch/www
 gs_certs=gs://swtch/certs
 
 # Build redirector for linux/amd64 and copy to Google Cloud Storage
@@ -28,40 +28,66 @@ install-server:
 	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o swtch.linux .
 	gsutil cp swtch.linux $(gs_server)
 
-install-web:
-	gsutil -m rsync -r web $(gs_webroot)
+install-cron-exe: install-cron-cl2issue install-cron-godash install-cron-issue install-cron-cl install-cron-gcscat
 
-# Start VM for rsc.io. The VM name is rsc-io, as is the name for the IP address
-# (acquired via 'make newip-rsc-io'). Using the debian-7 image is important
+install-cron-cl2issue:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o cl2issue.linux rsc.io/github/cl2issue
+	gsutil cp cl2issue.linux gs://swtch/cron/exe/cl2issue
+
+install-cron-godash:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o godash.linux rsc.io/github/godash
+	gsutil cp godash.linux gs://swtch/cron/exe/godash
+
+install-cron-issue:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o issue.linux rsc.io/github/issue
+	gsutil cp issue.linux gs://swtch/cron/exe/issue
+
+install-cron-cl:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o cl.linux golang.org/x/build/cmd/cl
+	gsutil cp cl.linux gs://swtch/cron/exe/cl
+
+install-cron-gcscat:
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o gcscat.linux rsc.io/cloud/google/gcscat
+	gsutil cp gcscat.linux gs://swtch/cron/exe/gcscat
+	
+install-crontab:
+	gsutil cp crontab gs://swtch/cron
+	gsutil cp updateissue updatedash gs://swtch/cron/exe
+	gsutil cp crongo gs://swtch/cron/exe/go
+
+# install-web:
+# 	gsutil -m rsync -r web $(gs_webroot)
+
+# Start VM for swtch.com. The VM name is swtch-com, as is the name for the IP address
+# (acquired via 'make newip-swtch-com'). Using the debian-7 image is important
 # because it has the startup-script support (Ubuntu does not).
 # The f1-micro instance seems to be plenty of power for this use and costs ~$100/year.
 # The gce-startup-script file is copied to the VM and runs at startup.
-# It reads the three metadata variables at the end of the script, copies the
-# redirector from the first one (redirector=) and then invokes it with the
-# arguments given by the second and third (import= and repo=).
+# It reads the metadata variable named server, fetches that executable from
+# Google Cloud storage as /work/server, and runs it in /work.
+# The server itself initializes its flag from metadata variables before
+# processing the command line.
 start-www:
 	gcloud compute instances create www --address swtch-com \
 		--zone us-central1-a \
 		--image debian-7 \
 		--metadata-from-file startup-script=gce-startup-script \
 		--machine-type f1-micro \
-		--metadata \
-			server=$(gs_server) \
-			webroot=$(gs_webroot) \
-			certs=$(gs_certs) \
+		--metadata server=$(gs_server) \
+			host=swtch.com \
+			cron=gs://swtch/cron \
+			tls=true \
 
-# Same, but instance and address name is rsc-io-test. For testing.
-start-rsc-io-test:
-	gcloud compute instances create rsc-io-test --address rsc-io-test \
+# Same, but instance and address name is www-test. For testing.
+start-www-test:
+	gcloud compute instances create www-test --address www-test \
 		--zone us-central1-a \
 		--image debian-7 \
 		--metadata-from-file startup-script=gce-startup-script \
 		--machine-type f1-micro \
 		--metadata \
-			redirector=$(gs_redirector) \
-			import=rsc.io/* \
-			repo=https://github.com/rsc/* \
-			certs=gs://rsc/certs \
+			server=$(gs_server) \
+			host= \
 
 newip-%:
 	gcloud compute addresses create $* --region=us-central1

@@ -1,0 +1,5 @@
+HOME=/work/cron
+PATH=/work/cron/exe:/usr/local/bin:/usr/bin:/bin
+
+@hourly /work/cron/exe/updateissue
+*/5 * * * * /work/cron/exe/updatedash

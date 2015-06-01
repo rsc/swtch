@@ -1,0 +1,6 @@
+#!/bin/bash
+godash -wcache -html >/tmp/release.html
+godash -rcache -cl -html >/tmp/cl.html
+curl -T /tmp/release.html $(cat /work/cron/update-release.url)
+curl -T /tmp/cl.html $(cat /work/cron/update-cl.url)
+gcscat -expire 1ns swtch/www/godash/cl swtch/www/godash/release >/dev/null

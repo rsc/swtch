@@ -1,0 +1,39 @@
+#!/bin/bash
+
+# metadata prints the value associated with the named metadata key on this VM.
+metadata() {
+	curl http://metadata/computeMetadata/v1/instance/attributes/$1 -H "Metadata-Flavor: Google"
+}
+
+set -e
+server=$(metadata server)
+webroot=$(metadata webroot)
+
+# initialize /work
+mkdir /work
+mkdir /work/web
+gsutil cp $server /work/server
+chmod +x /work/server
+gsutil rsync -r $webroot /work/web
+
+# if metadata for 'certs' is present, copy certificates from
+# <certs>/<host>.crt and <certs>/<host>.key,
+# where host is the host name in the import path.
+cd /work
+set +e
+host=swtch.com
+certs=$(metadata certs)
+opt=""
+if [ "$certs" != "" ]; then
+	opt=-tls
+	gsutil cp $certs/$host.crt .
+	gsutil cp $certs/$host.key .
+fi
+
+# run server in a loop, sleeping 10 seconds between restarts
+while true
+do
+	./server $opt "$import" "$repo"
+	sleep 10
+done >log 2>&1 &
+exit 0

@@ -1,0 +1,11 @@
+application: calcium-vector-91212
+module: default
+version: test
+runtime: go
+api_version: go1
+
+handlers:
+- url: /.*
+  script: _go_app
+  secure: always
+

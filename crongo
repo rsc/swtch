@@ -1,8 +1,0 @@
-#!/bin/bash
-# Fake go command for cl's 'go env GOROOT' call.
-if [ "$1" = "env" -a "$2" = "GOROOT" ]; then
-	echo /work/go
-	exit 0
-fi
-echo >&2 no go installed
-exit 2

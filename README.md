@@ -1,2 +1,3 @@
-go get [-u] rsc.io/swtch
-https://godoc.org/rsc.io/swtch
+This repo holds the web server apps that run swtch.com.
+
+Feel free to poke around and fork.

@@ -189,7 +189,6 @@ func checkETag(w http.ResponseWriter, r *http.Request, modtime time.Time) (range
 	// current file."
 	// We only support ETag versions.
 	// The caller must have set the ETag on the response already.
-	log.Errorf(appengine.NewContext(r), "If-Range %q vs %q", r.Header.Get("If-Range"), etag)
 	if ir := r.Header.Get("If-Range"); ir != "" && ir != etag {
 		// The If-Range value is typically the ETag value, but it may also be
 		// the modtime date. See golang.org/issue/8367.

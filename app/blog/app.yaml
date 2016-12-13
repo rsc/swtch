@@ -1,0 +1,13 @@
+application: rsc-swtch-app
+module: blog-test
+version: test
+runtime: go
+api_version: go1
+automatic_scaling:
+  max_concurrent_requests: 30
+
+handlers:
+- url: /.*
+  script: _go_app
+  secure: always
+

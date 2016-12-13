@@ -1,0 +1,11 @@
+application: rsc-swtch-app
+module: remote-api-server
+version: test
+runtime: go
+api_version: go1
+
+handlers:
+- url: /_ah/remote_api
+  script: _go_app
+  secure: always
+

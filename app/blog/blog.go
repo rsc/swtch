@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package www
+package blog
 
 import (
 	"net/http"
@@ -11,6 +11,6 @@ import (
 )
 
 func init() {
-	http.Handle("/", servegcs.Handler("swtch.com", "swtch/www"))
-	http.HandleFunc("www.swtch.com/", servegcs.RedirectHost("swtch.com"))
+	http.Handle("/", servegcs.Handler("research.swtch.com", "swtch/www-blog"))
+	http.Handle("/feeds/posts/default", http.RedirectHandler("/feed.atom", http.StatusFound))
 }

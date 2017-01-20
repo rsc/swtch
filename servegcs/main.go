@@ -156,10 +156,12 @@ func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *ht
 	// Something magical somewhere copies the byte range from the request
 	// unless we override it explicitly. Since we are implementing If-Range,
 	// we need to override it.
-	if rangeReq == "" {
-		rangeReq = "bytes=0-"
+	if r.Header.Get("Range") != "" {
+		if rangeReq == "" {
+			rangeReq = "bytes=0-"
+		}
+		w.Header().Set("X-AppEngine-BlobRange", rangeReq)
 	}
-	w.Header().Set("X-AppEngine-BlobRange", rangeReq)
 
 	key, err := blobstore.BlobKeyForFile(ctx, "/gs/"+bucketName+"/"+file)
 	if err != nil {

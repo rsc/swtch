@@ -1,6 +1,6 @@
 application: rsc-swtch-app
-module: blog-test
-version: test
+module: default
+version: blog-test
 runtime: go
 api_version: go1
 automatic_scaling:

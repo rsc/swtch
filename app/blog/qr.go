@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 
+	_ "rsc.io/swtch/appfs/server"
 	qrweb "rsc.io/swtch/qrweb"
 )
 

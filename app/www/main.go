@@ -12,5 +12,6 @@ import (
 
 func init() {
 	http.Handle("/", servegcs.Handler("swtch.com", "swtch/www"))
+	http.HandleFunc("/plan9port/", servegcs.RedirectHost("9fans.github.io"))
 	http.HandleFunc("www.swtch.com/", servegcs.RedirectHost("swtch.com"))
 }

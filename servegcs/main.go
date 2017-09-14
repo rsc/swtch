@@ -58,8 +58,10 @@ func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Disallow any "dot files" or dot-dot elements.
-	if strings.Contains(r.URL.Path, "/.") || !strings.HasPrefix(r.URL.Path, "/") {
+	// Disallow any "dot files" or dot-dot elements, except ".well-known",
+	// which is needed for various automated systems.
+	replaced := strings.Replace(r.URL.Path, "/.well-known/", "/dot-well-known-is-ok/", -1)
+	if strings.Contains(replaced, "/.") || !strings.HasPrefix(replaced, "/") {
 		http.Error(w, "invalid URL", http.StatusBadRequest)
 		return
 	}

@@ -3,8 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package servegcs implements serving a file tree from Google Cloud Storage.
-// Recently read data and metadata is cached in memcache, and files are served
-// with headers allowing caching by Google infrastructure for up to 5 minutes.
+// Files are served with headers allowing caching by Google infrastructure for up to 5 minutes.
 //
 //	func init() {
 //		http.Handle("/", servegcs.Handler("swtch.com", "swtch/www"))
@@ -14,26 +13,20 @@
 package servegcs
 
 import (
-	"bytes"
-	"encoding/hex"
+	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
 	"path"
-	"strconv"
+	"reflect"
 	"strings"
-	"time"
+	"unsafe"
 
 	"cloud.google.com/go/storage"
-	"golang.org/x/net/context"
-	"google.golang.org/appengine"
-	"google.golang.org/appengine/blobstore"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/memcache"
-)
-
-const (
-	directServeCutoff = 64 * 1024
 )
 
 var badRobot = `User-agent: *
@@ -58,6 +51,12 @@ func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *ht
 		return
 	}
 
+	if r.Method != "GET" {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("only GET"))
+		return
+	}
+
 	// Disallow any "dot files" or dot-dot elements, except ".well-known",
 	// which is needed for various automated systems.
 	replaced := strings.Replace(r.URL.Path, "/.well-known/", "/dot-well-known-is-ok/", -1)
@@ -74,10 +73,10 @@ func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *ht
 		return
 	}
 
-	ctx := appengine.NewContext(r)
+	ctx := r.Context()
 	client, err := storage.NewClient(ctx)
 	if err != nil {
-		log.Errorf(ctx, "failed to create client: %v", err)
+		logErrorf(r, "failed to create client: %v", err)
 		return
 	}
 	defer client.Close()
@@ -99,7 +98,7 @@ func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *ht
 	}
 
 	if err != nil {
-		log.Errorf(ctx, "lookup %s/%s: %v", bucketName, file, err)
+		logErrorf(r, "lookup %s/%s: %v", bucketName, file, err)
 		if err != storage.ErrObjectNotExist {
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
@@ -122,56 +121,89 @@ func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *ht
 	// Allow caching of found results for 5 minutes.
 	// May cut load on our server, and we don't expect our Google Cloud files to change often.
 	// Override with standard GCS Cache-Control attribute.
+	cacheControl := "public, max-age=300"
 	if attrs.CacheControl != "" {
-		w.Header().Set("Cache-Control", attrs.CacheControl)
-	} else {
-		w.Header().Set("Cache-Control", "public, max-age=300")
+		cacheControl = attrs.CacheControl
 	}
 
-	// Take content type from GCS, but add default UTF-8.
-	if typ := attrs.ContentType; typ != "" {
-		if typ == "text/plain" || typ == "text/html" {
-			typ += "; charset=utf-8"
-		}
-		w.Header().Set("Content-Type", typ)
-	}
-
-	// Handle ranges, etags so that reloads are fast (send 304s).
-	w.Header().Set("Accept-Ranges", "bytes")
-	w.Header().Set("Etag", fmt.Sprintf("%x", attrs.MD5))
-	if checkLastModified(w, r, attrs.Updated) {
-		return
-	}
-	rangeReq, done := checkETag(w, r, attrs.Updated)
-	if done {
-		return
-	}
-
-	if attrs.Size < directServeCutoff {
-		data, err := lookupContent(ctx, client, attrs, bucketName, file)
-		if err == nil {
-			w.Write(data)
-			return
-		}
-	}
-
-	// Something magical somewhere copies the byte range from the request
-	// unless we override it explicitly. Since we are implementing If-Range,
-	// we need to override it.
-	if r.Header.Get("Range") != "" {
-		if rangeReq == "" {
-			rangeReq = "bytes=0-"
-		}
-		w.Header().Set("X-AppEngine-BlobRange", rangeReq)
-	}
-
-	key, err := blobstore.BlobKeyForFile(ctx, "/gs/"+bucketName+"/"+file)
+	newURL, err := url.Parse("https://storage.googleapis.com/" + bucketName + "/" + file)
 	if err != nil {
-		log.Errorf(ctx, "blobstore.BlobKeyForFile: %v", err)
-		http.Error(w, "problem loading file", http.StatusInternalServerError)
-		return
+		logErrorf(r, "parsing GCS URL: %v", err)
 	}
-	blobstore.Send(w, key)
+
+	// Request from GCS using stolen authenticated http.Client from inside storage.Client and proxy result back.
+	(&httputil.ReverseProxy{
+		Transport: (*http.Client)(unsafe.Pointer(reflect.ValueOf(client).Elem().FieldByName("hc").Pointer())).Transport,
+		Director: func(r *http.Request) {
+			r.URL = newURL
+			r.Host = newURL.Host
+		},
+		ModifyResponse: func(r *http.Response) error {
+			r.Header.Set("Cache-Control", cacheControl)
+			for k := range r.Header {
+				if strings.HasPrefix(k, "X-G") {
+					delete(r.Header, k)
+				}
+			}
+			return nil
+		},
+	}).ServeHTTP(w, r)
+}
+
+func lookupAttrs(ctx context.Context, client *storage.Client, bucketName, file string) (*storage.ObjectAttrs, error) {
+	return client.Bucket(bucketName).Object(file).Attrs(ctx)
+}
+
+func lookupContent(ctx context.Context, client *storage.Client, attrs *storage.ObjectAttrs, bucketName, file string) ([]byte, error) {
+	r, err := client.Bucket(bucketName).Object(file).NewReader(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+	return ioutil.ReadAll(r)
+}
+
+func logAny(r *http.Request, severity, format string, args ...interface{}) {
+	var trace string
+	f := strings.Split(r.Header.Get("X-Cloud-Trace-Context"), "/")
+	if len(f) > 0 && f[0] != "" {
+		trace = fmt.Sprintf("projects/%s/traces/%s", os.Getenv("GOOGLE_CLOUD_PROJECT"), f[0])
+	}
+
+	out, err := json.Marshal(struct {
+		Message  string `json:"message"`
+		Severity string `json:"severity,omitempty"`
+		Trace    string `json:"logging.googleapis.com/trace,omitempty"`
+	}{
+		fmt.Sprintf(format, args...),
+		severity,
+		trace,
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "json.Marshal: %v\n", err)
+	}
+	out = append(out, '\n')
+	os.Stdout.Write(out)
+}
+
+func logErrorf(r *http.Request, format string, args ...interface{}) {
+	logAny(r, "ERROR", format, args...)
+}
+func logInfof(r *http.Request, format string, args ...interface{}) {
+	logAny(r, "INFO", format, args...)
+}
+func logCriticalf(r *http.Request, format string, args ...interface{}) {
+	logAny(r, "CRITICAL", format, args...)
+}
+
+// localRedirect gives a Moved Permanently response.
+// It does not convert relative paths to absolute paths like Redirect does.
+func localRedirect(w http.ResponseWriter, r *http.Request, newPath string) {
+	if q := r.URL.RawQuery; q != "" {
+		newPath += "?" + q
+	}
+	w.Header().Set("Location", newPath)
+	w.WriteHeader(http.StatusMovedPermanently)
 }
 
 func RedirectHost(host string) http.HandlerFunc {
@@ -179,137 +211,4 @@ func RedirectHost(host string) http.HandlerFunc {
 		req.URL.Host = host
 		http.Redirect(w, req, req.URL.String(), 302)
 	}
-}
-
-func lookupAttrs(ctx context.Context, client *storage.Client, bucketName, file string) (*storage.ObjectAttrs, error) {
-	const (
-		cachePrefix  = "www-attrs:"
-		cacheVersion = "v2"
-	)
-	key := cachePrefix + bucketName + "/" + file
-	item, err := memcache.Get(ctx, key)
-	if err != nil && err != memcache.ErrCacheMiss {
-		log.Errorf(ctx, "memcache.Get attrs: %v", err)
-	}
-	if err == nil {
-		log.Infof(ctx, "memcache.Get attrs hit: %v", key)
-	}
-	forceLookup := false
-Again:
-	if err != nil || forceLookup {
-		log.Infof(ctx, "memcache.Get attrs refresh: %v", key)
-		// Get attrs and seed cache.
-		attrs, err := client.Bucket(bucketName).Object(file).Attrs(ctx)
-		if err != nil && err != storage.ErrObjectNotExist {
-			log.Errorf(ctx, "reading object attrs: %v", err)
-			return nil, err
-		}
-		item = new(memcache.Item)
-		item.Key = key
-		if err == storage.ErrObjectNotExist {
-			item.Value = []byte("?")
-		} else {
-			item.Value = []byte(fmt.Sprintf("%s\n%q\n%q\n%x\n%d\n%s",
-				cacheVersion,
-				attrs.CacheControl,
-				attrs.ContentType,
-				attrs.MD5,
-				attrs.Size,
-				attrs.Updated.UTC().Format(time.RFC3339)))
-		}
-		// TODO: Limit Expiration based on attrs.CacheControl
-		item.Expiration = 5 * time.Minute
-		if err := memcache.Set(ctx, item); err != nil {
-			log.Errorf(ctx, "caching object attrs: %v", err)
-			// Don't return: keep going with filled-in item.
-		}
-	}
-
-	// Now have item, either from cache or just synthesized.
-	// Parse to recreate attrs.
-	// We do this even on the cache miss path to ensure that the
-	// information returned from a cache miss is not more detailed
-	// than the information returned from a cache hit (and that cache hit
-	// parsing works at all).
-	f := strings.Split(string(item.Value), "\n")
-	if len(f) == 1 && f[0] == "?" {
-		return nil, storage.ErrObjectNotExist
-	}
-	attrs := new(storage.ObjectAttrs)
-	if len(f) != 6 || f[0] != cacheVersion {
-		goto BadCache
-	}
-	attrs.CacheControl, err = strconv.Unquote(f[1])
-	if err != nil {
-		goto BadCache
-	}
-	attrs.ContentType, err = strconv.Unquote(f[2])
-	if err != nil {
-		goto BadCache
-	}
-	attrs.MD5, err = hex.DecodeString(f[3])
-	if err != nil {
-		goto BadCache
-	}
-	attrs.Size, err = strconv.ParseInt(f[4], 10, 64)
-	if err != nil {
-		goto BadCache
-	}
-	attrs.Updated, err = time.Parse(time.RFC3339, f[5])
-	if err != nil {
-		goto BadCache
-	}
-	return attrs, err
-
-BadCache:
-	log.Errorf(ctx, "memcache.Get attrs: unexpected cache value: %d fields, %q", len(f), f[0])
-	if !forceLookup {
-		forceLookup = true
-		goto Again
-	}
-	return nil, fmt.Errorf("bad cache value")
-}
-
-func lookupContent(ctx context.Context, client *storage.Client, attrs *storage.ObjectAttrs, bucketName, file string) ([]byte, error) {
-	const (
-		cachePrefix  = "www-content:"
-		cacheVersion = "v1:"
-	)
-	key := cachePrefix + bucketName + "/" + file + ":" + fmt.Sprintf("%x", attrs.MD5)
-	item, err := memcache.Get(ctx, key)
-	if err != nil && err != memcache.ErrCacheMiss {
-		log.Errorf(ctx, "memcache.Get content: %v", err)
-	}
-	if err == nil {
-		log.Infof(ctx, "memcache.Get content hit: %v", key)
-		if bytes.HasPrefix(item.Value, []byte(cacheVersion)) {
-			return item.Value[len(cacheVersion):], nil
-		}
-		val := item.Value
-		if len(val) > 16 {
-			val = val[:16]
-		}
-		log.Errorf(ctx, "memcache.Get bad cache entry: %x", val)
-	}
-
-	log.Infof(ctx, "memcache.Get content refresh: %v", key)
-	r, err := client.Bucket(bucketName).Object(file).NewReader(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer r.Close()
-	data, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	item = &memcache.Item{
-		Key:   key,
-		Value: append([]byte(cacheVersion), data...),
-	}
-	if err := memcache.Set(ctx, item); err != nil {
-		log.Errorf(ctx, "caching object content: %v", err)
-	}
-
-	return data, nil
 }

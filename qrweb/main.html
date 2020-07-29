@@ -1,0 +1,114 @@
+ <html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <title>QArt Coder</title>
+    <style>
+    #controls {
+    }
+    #output {
+      float: left;
+      width: 250px;
+      height: 100%;
+    }
+    #help {
+      font-size: 80%;
+    }
+    #about {
+      margin-top: 2em;
+    }
+    h1 {
+      text-align: left !important;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="article">
+    
+    <div id="output">
+    </div>
+
+    <div id="leftcol">
+    <h1>QArt Coder</h1>
+      <div id="controls">
+        <label for="url">URL:</label> <input id="url" type="text" size="100" value="{{.URL}}">
+        <br>
+        <font size=-1>Tip: Short URLs work best.</font>
+        <br>
+        <table id="arrows">
+          <tr>
+            <td>
+              <table cellspacing=0 cellpadding=0 border=0>
+              <tr><td><td><a style="button" href="javascript:up()"><img src="/qr/arrow?size=48&dir=1"><td>
+              <tr><td><a style="button" href="javascript:left()"><img src="/qr/arrow?size=48&dir=2"><td><img src="/qr/draw?show=png&i={{.Name}}"><td><a style="button" href="javascript:right()"><img src="/qr/arrow?size=48&dir=0">
+              <tr><td><td><a style="button" href="javascript:down()"><img src="/qr/arrow?size=48&dir=3"><td>
+              </table>
+            <td>
+              <table cellspacing=5 cellpadding=0 border=0>
+              <tr>
+                <td><a style="button" href="javascript:smaller()"><img src="/qr/arrow?size=20&dir=2">
+                <td>QR Size
+                <td><a style="button" href="javascript:bigger()"><img src="/qr/arrow?size=20&dir=0">
+      
+              <tr>
+                <td><a style="button" href="javascript:ismaller()"><img src="/qr/arrow?size=20&dir=2">
+                <td>Image Size
+                <td><a style="button" href="javascript:ibigger()"><img src="/qr/arrow?size=20&dir=0">
+              </table>
+  
+            <td>
+              <label for="rand">
+                <input type="checkbox" id="rand" onclick="update()"></input> Random Pixels
+              </label>
+              <br>
+      
+              <label for="data">
+                <input type="checkbox" id="data" onclick="update()"></input> Data Pixels Only
+              </label>
+              <br>
+      
+              <label for="dither">
+                <input type="checkbox" id="dither" onclick="update()"></input> Dither
+              </label>
+              <br>
+      
+              <label for="control">
+                <input type="checkbox" id="control" onclick="update()"></input> Show Controllable Pixels
+              </label>
+              <br>
+              
+              <button onclick="update()">Update</button>
+              &nbsp; &nbsp;
+              <button onclick="rotate()">Rotate</button>
+        </table>
+  
+        <div>
+          <form method="POST" enctype="multipart/form-data" action="/qr/draw?upload=1">
+            <input type="file" name="image">
+            <br>
+            <input type="submit" value="Upload Image">
+            <br>
+            <font size=-1>Tip: small, high contrast images work best.</font>
+          </form>
+        </div>
+      </div>
+  
+  
+      <div id="help">
+      Use the blue buttons to move the image within the code<br>
+      and to change the size of the code and the image.<br>
+      <br>
+      <a href="/qart">How does this work?</a>
+      <br>
+      <br>
+      <a href="http://googleappengine.blogspot.com/2012/03/go-version-1-now-on-app-engine.html"><img src="/gopher.gif" alt="Powered by Go on Google App Engine"/><img src="http://code.google.com/appengine/images/appengine-noborder-120x30.gif" alt="Powered by Go on Google App Engine" /></a>
+    </div>
+    </div>
+
+      <script src="/qr.js"></script>
+      <script>
+      img = "{{.Name}}";
+      update();
+      </script>
+
+  </body>
+</html>

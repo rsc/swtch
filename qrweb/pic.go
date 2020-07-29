@@ -1,3 +1,7 @@
+// Copyright 2012 The Go Authors.  All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
 package web
 
 import (
@@ -7,6 +11,7 @@ import (
 	"image/color"
 	"image/draw"
 	"image/png"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
@@ -14,7 +19,6 @@ import (
 	"github.com/golang/freetype"
 	"rsc.io/qr"
 	"rsc.io/qr/coding"
-	"rsc.io/swtch/appfs/fs"
 )
 
 func makeImage(req *http.Request, caption, font string, pt, size, border, scale int, f func(x, y int) uint32) *image.RGBA {
@@ -43,10 +47,9 @@ func makeImage(req *http.Request, caption, font string, pt, size, border, scale 
 
 	if csize != 0 {
 		if font == "" {
-			font = "data/luxisr.ttf"
+			font = "qr/luxisr.ttf"
 		}
-		ctxt := fs.NewContext(req)
-		dat, _, err := ctxt.Read(font)
+		dat, err := ioutil.ReadFile(font)
 		if err != nil {
 			panic(err)
 		}

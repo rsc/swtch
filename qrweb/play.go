@@ -35,6 +35,7 @@ import (
 	_ "image/jpeg"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -47,18 +48,17 @@ import (
 	"rsc.io/qr"
 	"rsc.io/qr/coding"
 	"rsc.io/qr/gf256"
-	"rsc.io/swtch/appfs/fs"
 	"rsc.io/swtch/qrweb/resize"
 )
 
-func runTemplate(c *fs.Context, w http.ResponseWriter, name string, data interface{}) {
+func runTemplate(w http.ResponseWriter, name string, data interface{}) {
 	t := template.New("main")
 
-	main, _, err := c.Read(name)
+	main, err := ioutil.ReadFile(name)
 	if err != nil {
 		panic(err)
 	}
-	style, _, _ := c.Read("style.html")
+	style, _ := ioutil.ReadFile("style.html")
 	main = append(main, style...)
 	_, err = t.Parse(string(main))
 	if err != nil {
@@ -100,14 +100,14 @@ func isTagName(s string) bool {
 
 // Draw is the handler for drawing a QR code.
 func Draw(w http.ResponseWriter, req *http.Request) {
-	ctxt := fs.NewContext(req)
-
 	url := req.FormValue("url")
 	if url == "" {
 		url = "http://swtch.com/qr"
 	}
 	if req.FormValue("upload") == "1" {
-		upload(w, req, url)
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte("Uploads disabled, sorry.\n"))
+		// upload(w, req, url)
 		return
 	}
 
@@ -117,14 +117,14 @@ func Draw(w http.ResponseWriter, req *http.Request) {
 		img = "pjw"
 	}
 	if req.FormValue("show") == "png" {
-		i := loadSize(ctxt, img, 48)
+		i := loadSize(img, 48)
 		var buf bytes.Buffer
 		png.Encode(&buf, i)
 		w.Write(buf.Bytes())
 		return
 	}
 	if req.FormValue("flag") == "1" {
-		flag(w, req, img, ctxt)
+		flag(w, req, img)
 		return
 	}
 	if req.FormValue("x") == "" {
@@ -135,12 +135,12 @@ func Draw(w http.ResponseWriter, req *http.Request) {
 			Name: img,
 			URL:  url,
 		}
-		runTemplate(ctxt, w, "qr/main.html", &data)
+		runTemplate(w, "qr/main.html", &data)
 		return
 	}
 
 	arg := func(s string) int { x, _ := strconv.Atoi(req.FormValue(s)); return x }
-	targ := makeTarg(ctxt, img, 17+4*arg("v")+arg("z"))
+	targ := makeTarg(img, 17+4*arg("v")+arg("z"))
 
 	m := &Image{
 		Name:         img,
@@ -182,7 +182,7 @@ func Draw(w http.ResponseWriter, req *http.Request) {
 		h := md5.New()
 		h.Write(data)
 		tag := fmt.Sprintf("%x", h.Sum(nil))[:16]
-		if err := ctxt.Write("qrsave/"+tag, data); err != nil {
+		if err := ioutil.WriteFile("qrsave/"+tag, data, 0666); err != nil {
 			panic(err)
 		}
 		http.Redirect(w, req, "/qr/show/"+tag, http.StatusTemporaryRedirect)
@@ -248,7 +248,6 @@ func (m *Image) Link() string {
 
 // Show is the handler for showing a stored QR code.
 func Show(w http.ResponseWriter, req *http.Request) {
-	ctxt := fs.NewContext(req)
 	tag := req.URL.Path[len("/qr/show/"):]
 	png := strings.HasSuffix(tag, ".png")
 	if png {
@@ -259,10 +258,10 @@ func Show(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if req.FormValue("flag") == "1" {
-		flag(w, req, tag, ctxt)
+		flag(w, req, tag)
 		return
 	}
-	data, _, err := ctxt.Read("qrsave/" + tag)
+	data, err := ioutil.ReadFile("qrsave/" + tag)
 	if err != nil {
 		fmt.Fprintf(w, "Sorry, QR code not found.\n")
 		return
@@ -292,7 +291,7 @@ func Show(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Cache-Control", "public, max-age=300")
-	runTemplate(ctxt, w, "qr/permalink.html", &m)
+	runTemplate(w, "qr/permalink.html", &m)
 }
 
 func upload(w http.ResponseWriter, req *http.Request, link string) {
@@ -348,8 +347,7 @@ func upload(w http.ResponseWriter, req *http.Request, link string) {
 	h.Write(buf.Bytes())
 	tag := fmt.Sprintf("%x", h.Sum(nil))[:32]
 
-	ctxt := fs.NewContext(req)
-	if err := ctxt.Write("qr/upload/"+tag+".png", buf.Bytes()); err != nil {
+	if err := ioutil.WriteFile("qr/upload/"+tag+".png", buf.Bytes(), 0666); err != nil {
 		panic(err)
 	}
 
@@ -358,20 +356,20 @@ func upload(w http.ResponseWriter, req *http.Request, link string) {
 	http.Redirect(w, req, req.URL.Path+"?"+url.Values{"i": {tag}, "url": {link}}.Encode(), 302)
 }
 
-func flag(w http.ResponseWriter, req *http.Request, img string, ctxt *fs.Context) {
+func flag(w http.ResponseWriter, req *http.Request, img string) {
 	if !isImgName(img) && !isTagName(img) {
 		fmt.Fprintf(w, "Invalid image.\n")
 		return
 	}
-	data, _, _ := ctxt.Read("qr/flag/" + img)
+	data, _ := ioutil.ReadFile("qr/flag/" + img)
 	data = append(data, '!')
-	ctxt.Write("qr/flag/"+img, data)
+	ioutil.WriteFile("qr/flag/"+img, data, 0666)
 
 	fmt.Fprintf(w, "Thank you.  The image has been reported.\n")
 }
 
-func loadSize(ctxt *fs.Context, name string, max int) *image.RGBA {
-	data, _, err := ctxt.Read("qr/upload/" + name + ".png")
+func loadSize(name string, max int) *image.RGBA {
+	data, err := ioutil.ReadFile("qr/upload/" + name + ".png")
 	if err != nil {
 		panic(err)
 	}
@@ -396,8 +394,8 @@ func loadSize(ctxt *fs.Context, name string, max int) *image.RGBA {
 	return irgba
 }
 
-func makeTarg(ctxt *fs.Context, name string, max int) [][]int {
-	i := loadSize(ctxt, name, max)
+func makeTarg(name string, max int) [][]int {
+	i := loadSize(name, max)
 	b := i.Bounds()
 	dx, dy := b.Dx(), b.Dy()
 	targ := make([][]int, dy)
@@ -1114,5 +1112,4 @@ func BitsTable(w http.ResponseWriter, req *http.Request) {
 		b.canSet(uint(j), 0)
 	}
 	showtable(w, b, func(i int) bool { return i%2 == 0 })
-
 }

@@ -1,11 +1,7 @@
-application: rsc-io
-module: default
-version: test
-runtime: go
-api_version: go1
+# gcloud app deploy --project=rsc-io
 
+runtime: go114
 handlers:
 - url: /.*
-  script: _go_app
+  script: auto
   secure: always
-

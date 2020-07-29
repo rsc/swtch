@@ -1,3 +1,6 @@
 This directory holds the App Engine app for `rsc.io`, a simple Godoc redirector.
+It is deployed with
 
-See ../www/README.md for certificate recipes.
+	gcloud app deploy --project=rsc-io
+
+See `app.yaml`.

@@ -23,6 +23,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strconv"
 	"strings"
 	"unsafe"
 
@@ -45,15 +46,19 @@ func Handler(host, bucket string) http.HandlerFunc {
 
 func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *http.Request) {
 	// Keep robots away from test instances.
-	if r.URL.Host != host && r.URL.Path == "/robots.txt" {
+	requestHost := r.URL.Host
+	if requestHost == "" {
+		requestHost = r.Host
+	}
+	if requestHost != host && r.URL.Path == "/robots.txt" {
 		w.Header().Set("Content-Type", "text/plain")
 		w.Write([]byte(badRobot))
 		return
 	}
 
-	if r.Method != "GET" {
+	if r.Method != "GET" && r.Method != "HEAD" {
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("only GET"))
+		w.Write([]byte("only GET or HEAD"))
 		return
 	}
 
@@ -116,6 +121,14 @@ func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *ht
 
 		http.Error(w, "not found", http.StatusNotFound)
 		return
+	}
+
+	if status := attrs.Metadata["metadata.httpstatus"]; status != "" {
+		if n, err := strconv.Atoi(status); err == nil {
+			w.WriteHeader(n)
+			w.Write([]byte("I am a status " + status + " page."))
+			return
+		}
 	}
 
 	// Allow caching of found results for 5 minutes.

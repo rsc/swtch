@@ -1,0 +1,6 @@
+To generate the files,
+
+bunzip2 -k *.gob.bz2
+split -b 10000000 a056287.5.28.gob a056287.5.28.gob.
+split -b 10000000 xor.a056287.5.12.gob xor.a056287.5.12.gob.
+rm *.gob

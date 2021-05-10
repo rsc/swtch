@@ -1,8 +1,8 @@
-application: boolean-oracle
-version: 2
-runtime: go
-api_version: go1
+# gcloud app deploy --project=boolean-oracle
 
+runtime: go115
 handlers:
 - url: /.*
-  script: _go_app
+  script: auto
+  secure: always
+

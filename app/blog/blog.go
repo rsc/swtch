@@ -5,35 +5,23 @@
 package main
 
 import (
-	"flag"
+	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"os"
+	"runtime"
 
 	"rsc.io/swtch/servegcs"
 )
 
-var httpAddr = flag.String("http", "localhost:8080", "HTTP listen address")
-
 func main() {
+	http.HandleFunc("/.info", info)
 	http.Handle("/", servegcs.Handler("research.swtch.com", "swtch/www-blog"))
 	http.Handle("/feeds/posts/default", http.RedirectHandler("/feed.atom", http.StatusFound))
 
-	flag.Parse()
+	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
+}
 
-	if os.Getenv("GAE_ENV") == "standard" {
-		log.Println("running in App Engine Standard mode")
-		port := os.Getenv("PORT")
-		if port == "" {
-			port = "8080"
-		}
-		*httpAddr = ":" + port
-	}
-	l, err := net.Listen("tcp", *httpAddr)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("serving", *httpAddr)
-	log.Fatal(http.Serve(l, nil))
+func info(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "Go version: %s (Cloud Run)\n", runtime.Version())
 }

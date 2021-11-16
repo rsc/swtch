@@ -16,9 +16,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 	"path"
@@ -139,28 +139,72 @@ func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *ht
 		cacheControl = attrs.CacheControl
 	}
 
+	// Request from GCS using stolen authenticated http.Client
+	// from inside storage.Client and proxy result back.
+	authClient := (*http.Client)(unsafe.Pointer(reflect.ValueOf(client).Elem().FieldByName("hc").Pointer()))
+
 	newURL, err := url.Parse("https://storage.googleapis.com/" + bucketName + "/" + file)
 	if err != nil {
 		logErrorf(r, "parsing GCS URL: %v", err)
+		http.Error(w, "failed", http.StatusInternalServerError)
+		return
 	}
 
-	// Request from GCS using stolen authenticated http.Client from inside storage.Client and proxy result back.
-	(&httputil.ReverseProxy{
-		Transport: (*http.Client)(unsafe.Pointer(reflect.ValueOf(client).Elem().FieldByName("hc").Pointer())).Transport,
-		Director: func(r *http.Request) {
-			r.URL = newURL
-			r.Host = newURL.Host
-		},
-		ModifyResponse: func(r *http.Response) error {
-			r.Header.Set("Cache-Control", cacheControl)
-			for k := range r.Header {
-				if strings.HasPrefix(k, "X-G") {
-					delete(r.Header, k)
-				}
-			}
-			return nil
-		},
-	}).ServeHTTP(w, r)
+	newReq, err := http.NewRequestWithContext(ctx, "GET", newURL.String(), nil)
+	if err != nil {
+		logErrorf(r, "NewRequestWithContext: %v", err)
+		http.Error(w, "failed", http.StatusInternalServerError)
+		return
+	}
+
+	for _, hdr := range headersToGCS {
+		if vals, ok := r.Header[hdr]; ok {
+			newReq.Header[hdr] = vals
+		}
+	}
+
+	resp, err := authClient.Do(newReq)
+	if err != nil {
+		logErrorf(r, "authClient.Do: %v", err)
+		http.Error(w, "failed", http.StatusInternalServerError)
+		return
+	}
+	defer resp.Body.Close()
+	for _, hdr := range headersFromGCS {
+		if vals, ok := resp.Header[hdr]; ok {
+			w.Header()[hdr] = vals
+		}
+	}
+	w.Header()["Cache-Control"] = []string{cacheControl}
+
+	// Cloud Run limits the size of any one response to 32 MB.
+	// But there is an exception for chunked responses.
+	// So if the response would be too large, do not set Content-Length,
+	// which will force it to be chunked.
+	if resp.ContentLength < 30e6 || r.Method == "HEAD" {
+		// w.Header().Set("Content-Length", fmt.Sprint(resp.ContentLength))
+	}
+	w.WriteHeader(resp.StatusCode)
+	io.Copy(w, resp.Body)
+}
+
+var headersToGCS = []string{
+	"Accept",
+	"Range",
+	"If-Range",
+	"If-Modified-Since",
+	"If-Unmodified-Since",
+	"If-Match",
+	"If-None-Match",
+}
+
+var headersFromGCS = []string{
+	"Accept-Ranges",
+	"Content-Range",
+	"Content-Type",
+	"Expires",
+	"Etag",
+	"Last-Modified",
 }
 
 func lookupAttrs(ctx context.Context, client *storage.Client, bucketName, file string) (*storage.ObjectAttrs, error) {

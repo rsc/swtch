@@ -1,4 +1,9 @@
-This directory holds the App Engine app for `swtch.com`. See `app.yaml`.
+This directory holds the Cloud Run app for `swtch.com`.
+
+	gcloud run deploy www \
+		--project=calcium-vector-91212 \
+		--region=us-east1 \
+		--source=.
 
 It serves a file tree stored in Google Cloud Storage at `gs://swtch/www/`,
 including ETag and Last-Modified headers in responses and
@@ -16,4 +21,3 @@ There is (intentionally) no support for directory listings.
 
 If gs://swtch/www/404.html exists,
 its content is used as the response body for any 404 error.
-

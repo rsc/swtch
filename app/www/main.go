@@ -24,5 +24,5 @@ func main() {
 }
 
 func info(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Go version: %s\n", runtime.Version())
+	fmt.Fprintf(w, "Go version: %s (Cloud Run)\n", runtime.Version())
 }

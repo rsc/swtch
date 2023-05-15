@@ -1,0 +1,8 @@
+# gcloud app deploy --project=go-mod-viewer
+
+runtime: go120
+app_engine_apis: true
+handlers:
+- url: /.*
+  script: auto
+  secure: always

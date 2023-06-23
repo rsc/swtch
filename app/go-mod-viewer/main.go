@@ -8,6 +8,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
+	"embed"
 	"fmt"
 	"html"
 	"io"
@@ -24,13 +25,14 @@ import (
 	"golang.org/x/mod/module"
 	"google.golang.org/appengine/v2"
 	"google.golang.org/appengine/v2/memcache"
-	"rsc.io/swtch/servegcs"
 )
+
+//go:embed index.html viewer.*
+var static embed.FS
 
 func main() {
 	http.HandleFunc("/.info", info)
 	http.HandleFunc("/", modViewer)
-
 	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
 }
 
@@ -39,15 +41,20 @@ func info(w http.ResponseWriter, r *http.Request) {
 }
 
 var deployID = os.Getenv("GAE_DEPLOYMENT_ID")
-var staticHandler = servegcs.Handler("go-mod-viewer.appspot.com", "swtch/go-mod-viewer")
+var staticHandler http.Handler = http.FileServer(http.FS(static))
 
 func modViewer(w http.ResponseWriter, r *http.Request) {
 	if i := strings.Index(r.URL.Path, "@"); i < 0 {
-		staticHandler(w, r)
+		staticHandler.ServeHTTP(w, r)
 		return
 	}
 	if strings.HasSuffix(r.URL.Path, "/") {
 		http.Redirect(w, r, strings.TrimSuffix(r.URL.Path, "/"), http.StatusSeeOther)
+		return
+	}
+
+	if deployID == "" {
+		w.Write(serve(r.URL.Path))
 		return
 	}
 
@@ -188,12 +195,30 @@ func (r *remoteReaderAt) ReadAt(b []byte, off int64) (int, error) {
 	return copy(b, data), nil
 }
 
+func printHeader(buf *bytes.Buffer, mod, vers, file string) {
+	e := html.EscapeString
+	buf.WriteString("<!DOCTYPE html>\n<head>\n")
+	buf.WriteString("<script src=\"/viewer.js\"></script>\n")
+	buf.WriteString("<link rel=\"stylesheet\" href=\"/viewer.css\">\n")
+	buf.WriteString("<script src=\"/viewer.js\"></script>\n")
+	fmt.Fprintf(buf, `<title>%s@%s/%s - go module viewer</title>`, e(mod), e(vers), e(file))
+	buf.WriteString("\n</head><body onload=\"highlight()\"><pre>\n")
+	fmt.Fprintf(buf, `<b><a href="/%s@%s/">%s@%s</a>`, e(mod), e(vers), e(mod), e(vers))
+	f := ""
+	for _, elem := range strings.Split(file, "/") {
+		f += "/" + elem
+		fmt.Fprintf(buf, `/<a href="/%s@%s%s">%s</a>`, e(mod), e(vers), e(f), e(elem))
+	}
+	fmt.Fprintf(buf, `</b> <small>(<a href="/">about</a>)</small>`)
+	fmt.Fprintf(buf, "\n\n")
+}
+
 func serveDir(mod, vers, file string, dir []string) []byte {
 	var buf bytes.Buffer
 	e := html.EscapeString
-	buf.WriteString("<!DOCTYPE html><pre>\n")
-	fmt.Fprintf(&buf, "%s@%s/%s\n\n", e(mod), e(vers), e(file))
+	printHeader(&buf, mod, vers, file)
 	for _, file := range dir {
+		// Note: file is the full path including mod@vers.
 		fmt.Fprintf(&buf, "<a href=\"/%s\">%s</a>\n", e(file), e(path.Base(file)))
 	}
 	return buf.Bytes()
@@ -220,8 +245,7 @@ func serveFile(mod, vers, file string, zf *zip.File) []byte {
 
 	var buf bytes.Buffer
 	e := html.EscapeString
-	buf.WriteString("<!DOCTYPE html><pre>\n")
-	fmt.Fprintf(&buf, "%s@%s/%s\n\n", e(mod), e(vers), e(file))
+	printHeader(&buf, mod, vers, file)
 	n := 1 + bytes.Count(data, nl)
 	wid := len(fmt.Sprintf("%d", n))
 	wid = (wid+2+7)&^7 - 2
@@ -229,7 +253,7 @@ func serveFile(mod, vers, file string, zf *zip.File) []byte {
 	for len(data) > 0 {
 		var line []byte
 		line, data, _ = bytes.Cut(data, nl)
-		fmt.Fprintf(&buf, "<a name=\"L%d\"></a>%*d  %s\n", n, wid, n, e(string(line)))
+		fmt.Fprintf(&buf, "<span id=\"L%d\">%*d  %s\n</span>", n, wid, n, e(string(line)))
 		n++
 	}
 	return buf.Bytes()

@@ -1,437 +1,44 @@
-// Copyright 2012 The Go Authors.  All rights reserved.
+// Copyright 2022 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-/*
-QR data layout
-
-qr/
-	upload/
-		id.png
-		id.fix
-	flag/
-		id
-
-*/
-// TODO: Random seed taken from GET for caching, repeatability.
-// TODO: Flag for abuse button + some kind of dashboard.
-// TODO: +1 button on web page?  permalink?
-// TODO: Flag for abuse button on permalinks too?
-// TODO: Make the page prettier.
-// TODO: Cache headers.
-
-package qrweb
+package main
 
 import (
 	"bytes"
-	"crypto/md5"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"html/template"
 	"image"
 	"image/color"
-	_ "image/gif"
-	_ "image/jpeg"
+	"image/draw"
 	"image/png"
-	"io"
 	"io/ioutil"
 	"math/rand"
-	"net/http"
-	"net/url"
-	"os"
 	"sort"
-	"strconv"
-	"strings"
 	"time"
 
+	"github.com/golang/freetype"
 	"rsc.io/qr"
 	"rsc.io/qr/coding"
 	"rsc.io/qr/gf256"
 	"rsc.io/swtch/qrweb/resize"
 )
 
-func runTemplate(w http.ResponseWriter, name string, data interface{}) {
-	t := template.New("main")
-
-	main, err := ioutil.ReadFile(name)
-	if err != nil {
-		panic(err)
-	}
-	style, _ := ioutil.ReadFile("style.html")
-	main = append(main, style...)
-	_, err = t.Parse(string(main))
-	if err != nil {
-		panic(err)
-	}
-
-	var buf bytes.Buffer
-	if err := t.Execute(&buf, &data); err != nil {
-		panic(err)
-	}
-	w.Write(buf.Bytes())
-}
-
-func isImgName(s string) bool {
-	if len(s) != 32 {
-		return false
-	}
-	for i := 0; i < len(s); i++ {
-		if '0' <= s[i] && s[i] <= '9' || 'a' <= s[i] && s[i] <= 'f' {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
-func isTagName(s string) bool {
-	if len(s) != 16 {
-		return false
-	}
-	for i := 0; i < len(s); i++ {
-		if '0' <= s[i] && s[i] <= '9' || 'a' <= s[i] && s[i] <= 'f' {
-			continue
-		}
-		return false
-	}
-	return true
-}
-
-// Draw is the handler for drawing a QR code.
-func Draw(w http.ResponseWriter, req *http.Request) {
-	url := req.FormValue("url")
-	if url == "" {
-		url = "http://swtch.com/qr"
-	}
-	if req.FormValue("upload") == "1" {
-		//	w.WriteHeader(http.StatusForbidden)
-		//	w.Write([]byte("Uploads disabled, sorry.\n"))
-		upload(w, req, url)
-		return
-	}
-
-	t0 := time.Now()
-	img := req.FormValue("i")
-	if !isImgName(img) {
-		img = "pjw"
-	}
-	if req.FormValue("show") == "png" {
-		i := loadSize(img, 48)
-		var buf bytes.Buffer
-		png.Encode(&buf, i)
-		w.Write(buf.Bytes())
-		return
-	}
-	if req.FormValue("flag") == "1" {
-		flag(w, req, img)
-		return
-	}
-	if req.FormValue("x") == "" {
-		var data = struct {
-			Name string
-			URL  string
-		}{
-			Name: img,
-			URL:  url,
-		}
-		runTemplate(w, "qr/main.html", &data)
-		return
-	}
-
-	arg := func(s string) int { x, _ := strconv.Atoi(req.FormValue(s)); return x }
-	targ := makeTarg(img, 17+4*arg("v")+arg("z"))
-
-	m := &Image{
-		Name:         img,
-		Dx:           arg("x"),
-		Dy:           arg("y"),
-		URL:          req.FormValue("u"),
-		Version:      arg("v"),
-		Mask:         arg("m"),
-		RandControl:  arg("r") > 0,
-		Dither:       arg("i") > 0,
-		OnlyDataBits: arg("d") > 0,
-		SaveControl:  arg("c") > 0,
-		Scale:        arg("scale"),
-		Target:       targ,
-		Seed:         int64(arg("s")),
-		Rotation:     arg("o"),
-		Size:         arg("z"),
-	}
-	if m.Version > 8 {
-		m.Version = 8
-	}
-
-	if m.Scale == 0 {
-		if arg("l") > 1 {
-			m.Scale = 8
-		} else {
-			m.Scale = 4
-		}
-	}
-	if m.Version >= 12 && m.Scale >= 4 {
-		m.Scale /= 2
-	}
-
-	if arg("l") == 1 {
-		data, err := json.Marshal(m)
-		if err != nil {
-			panic(err)
-		}
-		h := md5.New()
-		h.Write(data)
-		tag := fmt.Sprintf("%x", h.Sum(nil))[:16]
-		if err := ioutil.WriteFile("qrsave/"+tag, data, 0666); err != nil {
-			panic(err)
-		}
-		http.Redirect(w, req, "/qr/show/"+tag, http.StatusTemporaryRedirect)
-		return
-	}
-
-	if err := m.Encode(req); err != nil {
-		fmt.Fprintf(w, "%s\n", err)
-		return
-	}
-
-	var dat []byte
-	switch {
-	case m.SaveControl:
-		dat = m.Control
-	default:
-		dat = m.Code.PNG()
-	}
-
-	if arg("l") > 0 {
-		w.Header().Set("Content-Type", "image/png")
-		w.Write(dat)
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprint(w, "<center><img src=\"data:image/png;base64,")
-	io.WriteString(w, base64.StdEncoding.EncodeToString(dat))
-	fmt.Fprint(w, "\" /><br>")
-	fmt.Fprintf(w, "<form method=\"POST\" action=\"%s&l=1\"><input type=\"submit\" value=\"Save this QR code\"></form>\n", m.Link())
-	fmt.Fprintf(w, "</center>\n")
-	fmt.Fprintf(w, "<br><center><font size=-1>%v</font></center>\n", time.Now().Sub(t0))
-}
-
-func (m *Image) Small() bool {
-	return 8*(17+4*int(m.Version)) < 512
-}
-
-func (m *Image) Link() string {
-	s := fmt.Sprint
-	b := func(v bool) string {
-		if v {
-			return "1"
-		}
-		return "0"
-	}
-	val := url.Values{
-		"i": {m.Name},
-		"x": {s(m.Dx)},
-		"y": {s(m.Dy)},
-		"z": {s(m.Size)},
-		"u": {m.URL},
-		"v": {s(m.Version)},
-		"m": {s(m.Mask)},
-		"r": {b(m.RandControl)},
-		"t": {b(m.Dither)},
-		"d": {b(m.OnlyDataBits)},
-		"c": {b(m.SaveControl)},
-		"s": {s(m.Seed)},
-	}
-	return "/qr/draw?" + val.Encode()
-}
-
-// Show is the handler for showing a stored QR code.
-func Show(w http.ResponseWriter, req *http.Request) {
-	tag := req.URL.Path[len("/qr/show/"):]
-	png := strings.HasSuffix(tag, ".png")
-	if png {
-		tag = tag[:len(tag)-len(".png")]
-	}
-	if !isTagName(tag) {
-		fmt.Fprintf(w, "Sorry, QR code not found\n")
-		return
-	}
-	if req.FormValue("flag") == "1" {
-		flag(w, req, tag)
-		return
-	}
-	data, err := ioutil.ReadFile("qrsave/" + tag)
-	if err != nil {
-		fmt.Fprintf(w, "Sorry, QR code not found.\n")
-		return
-	}
-
-	var m Image
-	if err := json.Unmarshal(data, &m); err != nil {
-		panic(err)
-	}
-	m.Tag = tag
-
-	switch req.FormValue("size") {
-	case "big":
-		m.Scale *= 2
-	case "small":
-		m.Scale /= 2
-	}
-
-	if png {
-		if err := m.Encode(req); err != nil {
-			panic(err)
-			return
-		}
-		w.Header().Set("Cache-Control", "public, max-age=3600")
-		w.Write(m.Code.PNG())
-		return
-	}
-
-	w.Header().Set("Cache-Control", "public, max-age=300")
-	runTemplate(w, "qr/permalink.html", &m)
-}
-
-func upload(w http.ResponseWriter, req *http.Request, link string) {
-	// Upload of a new image.
-	// Copied from Moustachio demo.
-	f, _, err := req.FormFile("image")
-	if err != nil {
-		fmt.Fprintf(w, "You need to select an image to upload.\n")
-		return
-	}
-	defer f.Close()
-
-	i, _, err := image.Decode(f)
-	if err != nil {
-		panic(err)
-	}
-
-	// Convert image to 128x128 gray+alpha.
-	b := i.Bounds()
-	const max = 128
-	// If it's gigantic, it's more efficient to downsample first
-	// and then resize; resizing will smooth out the roughness.
-	var i1 *image.RGBA
-	if b.Dx() > 4*max || b.Dy() > 4*max {
-		w, h := 2*max, 2*max
-		if b.Dx() > b.Dy() {
-			h = b.Dy() * h / b.Dx()
-		} else {
-			w = b.Dx() * w / b.Dy()
-		}
-		i1 = resize.Resample(i, b, w, h)
-	} else {
-		// "Resample" to same size, just to convert to RGBA.
-		i1 = resize.Resample(i, b, b.Dx(), b.Dy())
-	}
-	b = i1.Bounds()
-
-	// Encode to PNG.
-	dx, dy := 128, 128
-	if b.Dx() > b.Dy() {
-		dy = b.Dy() * dx / b.Dx()
-	} else {
-		dx = b.Dx() * dy / b.Dy()
-	}
-	i128 := resize.ResizeRGBA(i1, i1.Bounds(), dx, dy)
-
-	var buf bytes.Buffer
-	if err := png.Encode(&buf, i128); err != nil {
-		panic(err)
-	}
-
-	h := md5.New()
-	h.Write(buf.Bytes())
-	tag := fmt.Sprintf("%x", h.Sum(nil))[:32]
-
-	if err := ioutil.WriteFile("qr/upload/"+tag+".png", buf.Bytes(), 0666); err != nil {
-		panic(err)
-	}
-
-	// Redirect with new image tag.
-	// Redirect to draw with new image tag.
-	http.Redirect(w, req, req.URL.Path+"?"+url.Values{"i": {tag}, "url": {link}}.Encode(), 302)
-}
-
-func flag(w http.ResponseWriter, req *http.Request, img string) {
-	if !isImgName(img) && !isTagName(img) {
-		fmt.Fprintf(w, "Invalid image.\n")
-		return
-	}
-	data, _ := ioutil.ReadFile("qr/flag/" + img)
-	data = append(data, '!')
-	ioutil.WriteFile("qr/flag/"+img, data, 0666)
-
-	fmt.Fprintf(w, "Thank you.  The image has been reported.\n")
-}
-
-func loadSize(name string, max int) *image.RGBA {
-	data, err := ioutil.ReadFile("qr/upload/" + name + ".png")
-	if err != nil {
-		panic(err)
-	}
-	i, _, err := image.Decode(bytes.NewBuffer(data))
-	if err != nil {
-		panic(err)
-	}
-	b := i.Bounds()
-	dx, dy := max, max
-	if b.Dx() > b.Dy() {
-		dy = b.Dy() * dx / b.Dx()
-	} else {
-		dx = b.Dx() * dy / b.Dy()
-	}
-	var irgba *image.RGBA
-	switch i := i.(type) {
-	case *image.RGBA:
-		irgba = resize.ResizeRGBA(i, i.Bounds(), dx, dy)
-	case *image.NRGBA:
-		irgba = resize.ResizeNRGBA(i, i.Bounds(), dx, dy)
-	}
-	return irgba
-}
-
-func makeTarg(name string, max int) [][]int {
-	i := loadSize(name, max)
-	b := i.Bounds()
-	dx, dy := b.Dx(), b.Dy()
-	targ := make([][]int, dy)
-	arr := make([]int, dx*dy)
-	for y := 0; y < dy; y++ {
-		targ[y], arr = arr[:dx], arr[dx:]
-		row := targ[y]
-		for x := 0; x < dx; x++ {
-			p := i.Pix[y*i.Stride+4*x:]
-			r, g, b, a := p[0], p[1], p[2], p[3]
-			if a == 0 {
-				row[x] = -1
-			} else {
-				row[x] = int((299*uint32(r) + 587*uint32(g) + 114*uint32(b) + 500) / 1000)
-			}
-		}
-	}
-	return targ
-}
-
 type Image struct {
-	Name     string
+	File  []byte
+	Img48 []byte
+
 	Target   [][]int
 	Dx       int
 	Dy       int
 	URL      string
-	Tag      string
 	Version  int
 	Mask     int
 	Scale    int
 	Rotation int
 	Size     int
 
-	// RandControl says to pick the pixels randomly.
-	RandControl bool
-	Seed        int64
+	// Rand says to pick the pixels randomly.
+	Rand bool
 
 	// Dither says to dither instead of using threshold pixel layout.
 	Dither bool
@@ -439,13 +46,46 @@ type Image struct {
 	// OnlyDataBits says to use only data bits, not check bits.
 	OnlyDataBits bool
 
-	// Code is the final QR code.
-	Code *qr.Code
-
 	// Control is a PNG showing the pixels that we controlled.
 	// Pixels we don't control are grayed out.
 	SaveControl bool
 	Control     []byte
+
+	// Code is the final QR code.
+	Code *qr.Code
+}
+
+func (m *Image) SetFile(data []byte) {
+	m.File = data
+	m.Img48 = nil
+	m.Target = nil
+}
+
+func (m *Image) Small() bool {
+	return 8*(17+4*int(m.Version)) < 512
+}
+
+func (m *Image) Clamp() {
+	if m.Version > 8 {
+		m.Version = 8
+	}
+	if m.Scale == 0 {
+		m.Scale = 8
+	}
+	if m.Version >= 12 && m.Scale >= 4 {
+		m.Scale /= 2
+	}
+}
+
+func (m *Image) Src() ([]byte, error) {
+	if m.Img48 == nil {
+		i, err := decode(m.File, 48)
+		if err != nil {
+			return nil, err
+		}
+		m.Img48 = pngEncode(i)
+	}
+	return m.Img48, nil
 }
 
 type Pixinfo struct {
@@ -542,15 +182,24 @@ func (m *Image) rotate(p *coding.Plan, rot int) {
 	p.Pixel = pix
 }
 
-func (m *Image) Encode(req *http.Request) error {
+func (m *Image) Encode() ([]byte, error) {
+	m.Clamp()
+	dt := 17 + 4*m.Version + m.Size
+	if len(m.Target) != dt {
+		t, err := makeTarg(m.File, dt)
+		if err != nil {
+			return nil, err
+		}
+		m.Target = t
+	}
 	p, err := coding.NewPlan(coding.Version(m.Version), coding.L, coding.Mask(m.Mask))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	m.rotate(p, m.Rotation)
 
-	rand := rand.New(rand.NewSource(m.Seed))
+	rand := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// QR parameters.
 	nd := p.DataBytes / p.Blocks
@@ -565,7 +214,7 @@ func (m *Image) Encode(req *http.Request) error {
 		expect[y] = make([]bool, len(row))
 		for x, pix := range row {
 			targ, contrast := m.target(x, y)
-			if m.RandControl && contrast >= 0 {
+			if m.Rand && contrast >= 0 {
 				contrast = rand.Intn(128) + 64*((x+y)%2) + 64*((x+y)%3%2)
 			}
 			expect[y][x] = pix&coding.Black != 0
@@ -584,7 +233,7 @@ Again:
 	bbit := b.Bits()
 	dbit := p.DataBytes*8 - bbit
 	if dbit < 0 {
-		return fmt.Errorf("cannot encode URL into available bits")
+		return nil, fmt.Errorf("cannot encode URL into available bits")
 	}
 	num := make([]byte, dbit/10*3)
 	for i := range num {
@@ -631,12 +280,12 @@ Again:
 		// Preserve [0, lo) and [hi, nd*8).
 		for i := 0; i < lo; i++ {
 			if !bb.canSet(uint(i), (bdata[i/8]>>uint(7-i&7))&1) {
-				return fmt.Errorf("cannot preserve required bits")
+				return nil, fmt.Errorf("cannot preserve required bits")
 			}
 		}
 		for i := hi; i < nd*8; i++ {
 			if !bb.canSet(uint(i), (bdata[i/8]>>uint(7-i&7))&1) {
-				return fmt.Errorf("cannot preserve required bits")
+				return nil, fmt.Errorf("cannot preserve required bits")
 			}
 		}
 
@@ -830,7 +479,7 @@ Again:
 
 	cc, err := p.Encode(coding.String(url), coding.Num(num))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if !m.Dither {
@@ -846,7 +495,7 @@ Again:
 	m.Code = &qr.Code{Bitmap: cc.Bitmap, Size: cc.Size, Stride: cc.Stride, Scale: m.Scale}
 
 	if m.SaveControl {
-		m.Control = pngEncode(makeImage(req, "", "", 0, cc.Size, 4, m.Scale, func(x, y int) (rgba uint32) {
+		m.Control = pngEncode(makeImage("", "", 0, cc.Size, 4, m.Scale, func(x, y int) (rgba uint32) {
 			pix := p.Pixel[y][x]
 			if pix.Role() == coding.Data || pix.Role() == coding.Check {
 				pinfo := &pixByOff[pix.Offset()]
@@ -862,9 +511,10 @@ Again:
 			}
 			return 0xbfbfbfff
 		}))
+		return m.Control, nil
 	}
 
-	return nil
+	return m.Code.PNG(), nil
 }
 
 func addDither(pixByOff []Pixinfo, pix coding.Pixel, err int) {
@@ -874,33 +524,6 @@ func addDither(pixByOff []Pixinfo, pix coding.Pixel, err int) {
 	pinfo := &pixByOff[pix.Offset()]
 	println("add", pinfo.X, pinfo.Y, pinfo.DTarg, err)
 	pinfo.DTarg += err
-}
-
-func readTarget(name string) ([][]int, error) {
-	f, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	m, err := png.Decode(f)
-	if err != nil {
-		return nil, fmt.Errorf("decode %s: %v", name, err)
-	}
-	rect := m.Bounds()
-	target := make([][]int, rect.Dy())
-	for i := range target {
-		target[i] = make([]int, rect.Dx())
-	}
-	for y, row := range target {
-		for x := range row {
-			a := int(color.RGBAModel.Convert(m.At(x, y)).(color.RGBA).A)
-			t := int(color.GrayModel.Convert(m.At(x, y)).(color.Gray).Y)
-			if a == 0 {
-				t = -1
-			}
-			row[x] = t
-		}
-	}
-	return target, nil
 }
 
 type BitBlock struct {
@@ -1032,83 +655,114 @@ func (b *BitBlock) copyOut() {
 	copy(b.cdata, b.B[b.DataBytes:])
 }
 
-func showtable(w http.ResponseWriter, b *BitBlock, gray func(int) bool) {
-	nd := b.DataBytes
-	nc := b.CheckBytes
-
-	fmt.Fprintf(w, "<table class='matrix' cellspacing=0 cellpadding=0 border=0>\n")
-	line := func() {
-		fmt.Fprintf(w, "<tr height=1 bgcolor='#bbbbbb'><td colspan=%d>\n", (nd+nc)*8)
+func decode(data []byte, max int) (*image.RGBA, error) {
+	i, _, err := image.Decode(bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
 	}
-	line()
-	dorow := func(row []byte) {
-		fmt.Fprintf(w, "<tr>\n")
-		for i := 0; i < (nd+nc)*8; i++ {
-			fmt.Fprintf(w, "<td")
-			v := row[i/8] >> uint(7-i&7) & 1
-			if gray(i) {
-				fmt.Fprintf(w, " class='gray'")
-			}
-			fmt.Fprintf(w, ">")
-			if v == 1 {
-				fmt.Fprintf(w, "1")
-			}
-		}
-		line()
+	b := i.Bounds()
+	dx, dy := max, max
+	if b.Dx() > b.Dy() {
+		dy = b.Dy() * dx / b.Dx()
+	} else {
+		dx = b.Dx() * dy / b.Dy()
 	}
-
-	m := b.M[len(b.M):cap(b.M)]
-	for i := len(m) - 1; i >= 0; i-- {
-		dorow(m[i])
+	var irgba *image.RGBA
+	switch i := i.(type) {
+	default:
+		irgba = resize.Resample(i, i.Bounds(), dx, dy)
+	case *image.RGBA:
+		irgba = resize.ResizeRGBA(i, i.Bounds(), dx, dy)
+	case *image.NRGBA:
+		irgba = resize.ResizeNRGBA(i, i.Bounds(), dx, dy)
 	}
-	m = b.M
-	for _, row := range b.M {
-		dorow(row)
-	}
-
-	fmt.Fprintf(w, "</table>\n")
+	return irgba, nil
 }
 
-func BitsTable(w http.ResponseWriter, req *http.Request) {
-	nd := 2
-	nc := 2
-	fmt.Fprintf(w, `<html>
-		<style type='text/css'>
-		.matrix {
-			font-family: sans-serif;
-			font-size: 0.8em;
-		}
-		table.matrix {
-			padding-left: 1em;
-			padding-right: 1em;
-			padding-top: 1em;
-			padding-bottom: 1em;
-		}
-		.matrix td {
-			padding-left: 0.3em;
-			padding-right: 0.3em;
-			border-left: 2px solid white;
-			border-right: 2px solid white;
-			text-align: center;
-			color: #aaa;
-		}
-		.matrix td.gray {
-			color: black;
-			background-color: #ddd;
-		}
-		</style>
-	`)
-	rs := gf256.NewRSEncoder(coding.Field, nc)
-	dat := make([]byte, nd+nc)
-	b := newBlock(nd, nc, rs, dat[:nd], dat[nd:])
-	for i := 0; i < nd*8; i++ {
-		b.canSet(uint(i), 0)
+func makeTarg(data []byte, max int) ([][]int, error) {
+	i, err := decode(data, max)
+	if err != nil {
+		return nil, err
 	}
-	showtable(w, b, func(i int) bool { return i < nd*8 })
+	b := i.Bounds()
+	dx, dy := b.Dx(), b.Dy()
+	targ := make([][]int, dy)
+	arr := make([]int, dx*dy)
+	for y := 0; y < dy; y++ {
+		targ[y], arr = arr[:dx], arr[dx:]
+		row := targ[y]
+		for x := 0; x < dx; x++ {
+			p := i.Pix[y*i.Stride+4*x:]
+			r, g, b, a := p[0], p[1], p[2], p[3]
+			if a == 0 {
+				row[x] = -1
+			} else {
+				row[x] = int((299*uint32(r) + 587*uint32(g) + 114*uint32(b) + 500) / 1000)
+			}
+		}
+	}
+	return targ, nil
+}
 
-	b = newBlock(nd, nc, rs, dat[:nd], dat[nd:])
-	for j := 0; j < (nd+nc)*8; j += 2 {
-		b.canSet(uint(j), 0)
+func pngEncode(c image.Image) []byte {
+	var b bytes.Buffer
+	png.Encode(&b, c)
+	return b.Bytes()
+}
+
+func makeImage(caption, font string, pt, size, border, scale int, f func(x, y int) uint32) *image.RGBA {
+	d := (size + 2*border) * scale
+	csize := 0
+	if caption != "" {
+		if pt == 0 {
+			pt = 11
+		}
+		csize = pt * 2
 	}
-	showtable(w, b, func(i int) bool { return i%2 == 0 })
+	c := image.NewRGBA(image.Rect(0, 0, d, d+csize))
+
+	// white
+	u := &image.Uniform{C: color.White}
+	draw.Draw(c, c.Bounds(), u, image.ZP, draw.Src)
+
+	for y := 0; y < size; y++ {
+		for x := 0; x < size; x++ {
+			r := image.Rect((x+border)*scale, (y+border)*scale, (x+border+1)*scale, (y+border+1)*scale)
+			rgba := f(x, y)
+			u.C = color.RGBA{byte(rgba >> 24), byte(rgba >> 16), byte(rgba >> 8), byte(rgba)}
+			draw.Draw(c, r, u, image.ZP, draw.Src)
+		}
+	}
+
+	if csize != 0 {
+		if font == "" {
+			font = "qr/luxisr.ttf"
+		}
+		dat, err := ioutil.ReadFile(font)
+		if err != nil {
+			panic(err)
+		}
+		tfont, err := freetype.ParseFont(dat)
+		if err != nil {
+			panic(err)
+		}
+		ft := freetype.NewContext()
+		ft.SetDst(c)
+		ft.SetDPI(100)
+		ft.SetFont(tfont)
+		ft.SetFontSize(float64(pt))
+		ft.SetSrc(image.NewUniform(color.Black))
+		ft.SetClip(image.Rect(0, 0, 0, 0))
+		wid, err := ft.DrawString(caption, freetype.Pt(0, 0))
+		if err != nil {
+			panic(err)
+		}
+		p := freetype.Pt(d, d+3*pt/2)
+		p.X -= wid.X
+		p.X /= 2
+		ft.SetClip(c.Bounds())
+		ft.DrawString(caption, p)
+	}
+
+	return c
 }

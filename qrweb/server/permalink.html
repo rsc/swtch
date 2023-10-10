@@ -1,0 +1,46 @@
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <link rel="canonical" href="http://research.swtch.com/qr/show/{{.Tag}}">
+    <meta name="title" content="QArt Coder" />
+    <meta name="description" content="#qart {{.URL}}" />
+    <title>QArt Coder</title>
+    <style>
+    .abuse {
+      font-size: 80%;
+    }
+    h1 {
+      margin: 1em 0 0 0;
+      font-size: 120%;
+    }
+    </style>
+  </head>
+  <body>
+    <div class="article">
+    <center>
+    <h1><a href="/qr/draw">QArt Coder</a></h1>
+    <table><tr>
+    <td valign=center><img src="{{.Tag}}.png?size=small">
+    <td valign=center><img src="{{.Tag}}.png">
+    {{if .Small}}
+    <td valign=center><img src="{{.Tag}}.png?size=big">
+    {{end}}
+    </table>
+    <br>
+    This QR code, created by a user of <a href="/qr/draw">this web site</a>, links to<br>
+    <code>{{.URL}}</code>.
+    <br>
+    <br>
+    <form method="GET" action="/qr/draw"><input type="submit" style="font-size: 300%;" value="I want to try!"></form>
+    <br>
+    <br>
+    <br>
+    <br>
+    <div class="abuse"><form method="POST" action="{{.Tag}}?flag=1">
+      <input type="submit" style="font-size: 80%;" value="Flag abuse.">
+    </form>
+    </div>
+    </center>
+    </div>
+  </body>
+</html>

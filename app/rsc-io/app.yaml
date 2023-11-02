@@ -1,6 +1,6 @@
 # gcloud app deploy --project=rsc-io
 
-runtime: go116
+runtime: go121
 handlers:
 - url: /.*
   script: auto

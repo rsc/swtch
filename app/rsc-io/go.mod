@@ -1,5 +1,5 @@
 module rsc.io/swtch/app/rsc-io
 
-go 1.15
+go 1.20
 
-require rsc.io/go-import-redirector v0.0.1
+require rsc.io/go-import-redirector v0.0.3

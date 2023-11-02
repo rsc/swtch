@@ -1,6 +1,6 @@
 # gcloud app deploy --project=rsc-9fans-net
 
-runtime: go114
+runtime: go121
 handlers:
 - url: /.*
   script: auto

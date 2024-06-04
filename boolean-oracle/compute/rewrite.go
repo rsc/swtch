@@ -1,6 +1,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build ignore
+
 // This program rewrites "gob" encoded tables into raw binary tables.
 // The latter require less memory to decode on App Engine startup.
 

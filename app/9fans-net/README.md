@@ -1,3 +1,3 @@
 This directory holds the App Engine app for `9fans.net`.
 
-See ../www/README.md for certificate recipes.
+	gcloud app deploy --project=rsc-9fans-net

@@ -1,2 +1,10 @@
+golang.org/x/crypto v0.14.0 h1:wBqGXzWJW6m1XrIKlAH0Hs1JJ7+9KBwnIO8v66Q9cHc=
+golang.org/x/crypto v0.14.0/go.mod h1:MVFd36DqK4CsrnJYDkBA3VC4m2GkXAM0PvzMCn4JQf4=
+golang.org/x/net v0.17.0 h1:pVaXccu2ozPjCXewfr1S7xza/zcXTity9cCdXQYSjIM=
+golang.org/x/net v0.17.0/go.mod h1:NxSsAGuq816PNPmqtQdLE42eU2Fs7NoRIZrHJAlaCOE=
+golang.org/x/text v0.13.0 h1:ablQoSUd0tRdKxZewP80B+BaqeKJuVhuRxj/dkrun3k=
+golang.org/x/text v0.13.0/go.mod h1:TvPlkZtksWOMsz7fbANvkp4WM8x/WCo/om8BMLbz+aE=
 rsc.io/go-import-redirector v0.0.3 h1:gtafFNSsRD1ppAbBlbl85HhX8N8uJJWhRCHTKZWfTRo=
 rsc.io/go-import-redirector v0.0.3/go.mod h1:gvG4cLTEU2SdtUl/EnHQvusQlwpFaBnHcIh5AFlrgJ0=
+rsc.io/go-import-redirector v0.0.4 h1:mDw4IbTJZS/0teaEqv754QZKUCOip/TlQF+imX40IkI=
+rsc.io/go-import-redirector v0.0.4/go.mod h1:gvG4cLTEU2SdtUl/EnHQvusQlwpFaBnHcIh5AFlrgJ0=

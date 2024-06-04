@@ -35,6 +35,8 @@ func main() {
 	http.HandleFunc("/.info", info)
 	http.HandleFunc("/", root)
 	http.HandleFunc("/archive/", archive)
+	http.Handle("/acme-lsp/", godoc.Redirect("git", "9fans.net/acme-lsp", "https://github.com/9fans/acme-lsp"))
+	http.Handle("/internal/go-lsp/", godoc.Redirect("git", "9fans.net/internal/go-lsp", "https://github.com/9fans/go-lsp-internal"))
 	http.Handle("/go/", godoc.Redirect("git", "9fans.net/go", "https://github.com/9fans/go"))
 	log.Fatal(http.ListenAndServe(":"+os.Getenv("PORT"), nil))
 }

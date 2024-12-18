@@ -1,6 +1,6 @@
 # gcloud app deploy --project=rsc-swtch-app
 
-runtime: go114
+runtime: go123
 handlers:
 - url: /.*
   script: auto

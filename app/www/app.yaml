@@ -1,6 +1,6 @@
-# gcloud app deploy --project=calcium-vector-91212
+# See README.md for deploy command.
 
-runtime: go114
+runtime: go123
 handlers:
 - url: /.*
   script: auto

@@ -3,6 +3,7 @@ This directory holds the Cloud Run app for `swtch.com`.
 	gcloud run deploy www \
 		--project=calcium-vector-91212 \
 		--region=us-east1 \
+		--revision-suffix=123 \
 		--source=.
 
 It serves a file tree stored in Google Cloud Storage at `gs://swtch/www/`,

@@ -1,6 +1,6 @@
 # gcloud app deploy --project=boolean-oracle
 
-runtime: go115
+runtime: go123
 handlers:
 - url: /.*
   script: auto

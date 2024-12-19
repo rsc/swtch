@@ -9,7 +9,6 @@
 //		http.Handle("/", servegcs.Handler("swtch.com", "swtch/www"))
 //		http.HandleFunc("www.swtch.com/", servegcs.RedirectHost("swtch.com"))
 //	}
-//
 package servegcs
 
 import (
@@ -172,7 +171,9 @@ func handler(host, bucketName, bucketPrefix string, w http.ResponseWriter, r *ht
 	defer resp.Body.Close()
 	for _, hdr := range headersFromGCS {
 		if vals, ok := resp.Header[hdr]; ok {
-			w.Header()[hdr] = vals
+			if _, ok := w.Header()[hdr]; !ok {
+				w.Header()[hdr] = vals
+			}
 		}
 	}
 	w.Header()["Cache-Control"] = []string{cacheControl}

@@ -427,3 +427,5 @@ rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
 rsc.io/sampler v1.3.0/go.mod h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
 rsc.io/swtch v0.0.0-20211116025543-e1caa638acf3 h1:mbBMRaQiX13m0imgK+RmncbzeMtroyMPw5L2UOtHh28=
 rsc.io/swtch v0.0.0-20211116025543-e1caa638acf3/go.mod h1:zbOX1rWyQlKWi0JPXRwoL7PehJgvkLfW9YSZQeZzjdU=
+rsc.io/swtch v0.0.0-20241219213324-d737acfaafd0 h1:ZabhXcNZZ8kyMUWtsis+Dp5P8rUGatNKf+JJ/cKL3/U=
+rsc.io/swtch v0.0.0-20241219213324-d737acfaafd0/go.mod h1:p2R22Aeg5gSdtTeVF0whPsqNtsVqdH0wWqwC41BkJ50=

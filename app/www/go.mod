@@ -2,7 +2,7 @@ module rsc.io/swtch/app/www
 
 go 1.23.0
 
-require rsc.io/swtch v0.0.0-20211116025543-e1caa638acf3
+require rsc.io/swtch v0.0.0-20241219213324-d737acfaafd0
 
 require (
 	cloud.google.com/go v0.115.0 // indirect

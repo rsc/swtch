@@ -1,10 +1,5 @@
 This directory holds the Cloud Run app for `swtch.com`.
-
-	gcloud run deploy www \
-		--project=calcium-vector-91212 \
-		--region=us-east1 \
-		--revision-suffix=`{9 date -n} \
-		--source=.
+To deploy, 'mk deploy'.
 
 It serves a file tree stored in Google Cloud Storage at `gs://swtch/www/`,
 including ETag and Last-Modified headers in responses and

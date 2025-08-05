@@ -1,0 +1,9 @@
+default:V:
+	echo read mkfile
+
+deploy:V:
+	gcloud run deploy www \
+		--project=calcium-vector-91212 \
+		--region=us-east1 \
+		--revision-suffix=$(9 date -n) \
+		--source=.

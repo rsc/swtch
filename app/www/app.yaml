@@ -1,4 +1,4 @@
-# See README.md for deploy command.
+# mk deploy
 
 runtime: go123
 handlers:

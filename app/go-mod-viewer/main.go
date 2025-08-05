@@ -152,7 +152,6 @@ func serve(urlPath string) []byte {
 		if f.Name == full {
 			return serveFile(mod, vers, file, f)
 		}
-		println(f.Name, mod, vers, file, full)
 	}
 
 	return []byte("Not found.\n")
